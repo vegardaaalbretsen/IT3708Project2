@@ -7,13 +7,14 @@
 #     [2,5,-1,4,1,3,-1,7,6]
 #   ]
 
+include("ga_config.jl")
+   
+# TODO implement this
 function GA(
-        fitness_fn,
+        fitness_fn::Function,
         population::Vector{Vector{Int}},
         max_generations::Int,
-        parent_selection_fn,
-        crossover_fn,
-        selection_fn
+        ga_config::GAConfig
 )
 
     # n = length(population)
