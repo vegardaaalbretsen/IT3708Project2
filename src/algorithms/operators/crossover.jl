@@ -8,3 +8,6 @@ Crossover operators:
 
     Another method also on p. 82 in lecture 6
 """
+
+
+abstract type Crossover end

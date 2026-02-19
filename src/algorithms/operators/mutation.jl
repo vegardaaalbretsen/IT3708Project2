@@ -7,3 +7,5 @@ Mutation operators:
     Scramble
     Inversion
 """
+
+abstract type Mutator end
