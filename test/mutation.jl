@@ -36,7 +36,6 @@ Mutation operators to be implemented, and therefore tested:
         i,j = changed
         @test c[i] == x[j]
         @test x[i] == c[j]
-
     end
 
     @testset "Insert" begin
