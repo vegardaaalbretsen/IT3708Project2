@@ -1,5 +1,3 @@
-# TODO
-
 """
 Mutation operators:
     Swap
@@ -7,5 +5,7 @@ Mutation operators:
     Scramble
     Inversion
 """
+
+
 
 abstract type Mutator end
