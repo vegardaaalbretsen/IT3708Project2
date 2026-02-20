@@ -1,4 +1,5 @@
 module HomeCareGA
+using Random
 # Individual (chromosome): Vector{Int}
 #   [4,2,7,-1,1,6,-1,3,5]  -> routes: [4,2,7], [1,6], [3,5]
 #
@@ -7,10 +8,18 @@ module HomeCareGA
 #     [4,2,7,-1,1,6,-1,3,5],
 #     [2,5,-1,4,1,3,-1,7,6]
 #   ]
-export GA, GAConfig
-include("ga_config.jl")
+
+include("operators/crossover.jl")
+include("operators/selection.jl")
+include("operators/mutation.jl")
+include("operators/generators.jl")
    
-    # TODO implement this
+include("ga_config.jl")
+
+export GA, GAConfig
+export SwapMutator, mutate # Add more mutators
+export O1XCrossover, crossover # Add more crossovers
+
     function GA(
             #fitness_fn::F,
             population::Vector{Vector{Int}},
