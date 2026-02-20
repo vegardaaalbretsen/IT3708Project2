@@ -1,7 +1,7 @@
 using Test
 
 using StableRNGs
-include("../src/algorithms/operators/mutation.jl") 
+include("../src/operators/mutation.jl") 
 
 myrng = StableRNG(123)
 
@@ -30,7 +30,7 @@ Mutation operators to be implemented, and therefore tested:
         @test length(x) == length(c)
         @test sort(filter(!=(-1), c)) == sort(filter(!=(-1), x))
         @test findall(==(-1), c) == findall(==(-1), x)
-        changed = [i for i in eachindex(x) if x[i] != y[i] && x[i] != -1]
+        changed = [i for i in eachindex(x) if x[i] != c[i] && x[i] != -1]
         @test length(changed) == 2
 
         i,j = changed
