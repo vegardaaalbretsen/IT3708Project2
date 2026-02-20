@@ -1,0 +1,12 @@
+name = "HomeCareGA"
+uuid = "c611d6d5-a571-4175-8c8d-4d25c8b8e4a1"
+version = "0.1.0"
+authors = ["Vegard Aa Albretsen <vegardaaalbretsen@gmail.com>"]
+
+[deps]
+StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+StableRNGs = "1.0.4"
+Test = "1.11.0"
