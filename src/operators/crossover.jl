@@ -2,11 +2,19 @@ using Random: AbstractRNG, rand
 
 abstract type Crossover end
 
+
+
 Base.@kwdef struct O1XCrossover <: Crossover
     min_frac::Float64 = 0.05
     max_frac::Float64 = 0.30
 end
+"""
+    O1XCrossover(min_frac, max_frac)
 
+    Order-1 crossover operator (O1X). Preserves the relative order of elements from both parents.
+    - min_frac: Minimum fraction of chromosome length for crossover segment
+    - max_frac: Maximum fraction of chromosome length for crossover segment
+"""
 # -------------------------
 # Public crossover
 # -------------------------
