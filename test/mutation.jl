@@ -3,7 +3,7 @@ using Test
 using StableRNGs
 include("../src/algorithms/operators/mutation.jl") 
 
-myrng = StableRNGs(123)
+myrng = StableRNG(123)
 
 """
 Mutation operators to be implemented, and therefore tested:
