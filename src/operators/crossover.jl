@@ -118,7 +118,7 @@ function o1x_core!(child::Vector{Int},
     writepos = (b % N) + 1
 
     @inbounds for k in 0:N-1
-        idx = ((b + k - 1) % N) + 1
+        idx = (b + k) % N + 1
         g = parent2[idx]
         if !used[g]
             while child[writepos] != 0
