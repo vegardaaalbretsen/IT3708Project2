@@ -16,9 +16,9 @@ Crossover operators to be implemented, therefore tested:
 @info("Testing crossovers")
 @testset verbose=true "Crossover Test" begin
     @testset "O1X" begin
-    op = O1XCrossover(0.05, 0.30)
-    p1 = Int[1,2,3,4,5,6,7,8]
-    p2 = Int[4,3,2,1,8,7,6,5] 
+        op = O1XCrossover(0.05, 0.30)
+        p1 = Int[1,2,3,4,5,6,7,8]
+        p2 = Int[4,3,2,1,8,7,6,5] 
 
         @testset "deterministic basics" begin
             a, b = Int(3), Int(6)
