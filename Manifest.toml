@@ -2,14 +2,14 @@
 
 julia_version = "1.12.4"
 manifest_format = "2.0"
-project_hash = "d017a2d44778fbae3907893ba28679e349697c0c"
+project_hash = "c1451abb9edb560793085b3d9d044901887a8ded"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 version = "1.11.0"
 
 [[deps.HomeCareGA]]
-deps = ["Test"]
+deps = ["Random", "StableRNGs", "Test"]
 path = "."
 uuid = "c611d6d5-a571-4175-8c8d-4d25c8b8e4a1"
 version = "0.1.0"

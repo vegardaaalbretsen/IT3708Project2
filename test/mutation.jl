@@ -1,7 +1,6 @@
 using Test
-
 using StableRNGs
-include("../src/operators/mutation.jl") 
+using HomeCareGA
 
 myrng = StableRNG(123)
 
