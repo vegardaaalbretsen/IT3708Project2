@@ -28,7 +28,7 @@ function crossover(op::O1XCrossover, parent1::Vector{Int}, parent2::Vector{Int},
     end
 
     N = length(parent1)
-    a, b = sort(rand(rng, 1:N, 2))
+    a, b = choose_o1x_cuts(op, N, rng)
     c1 = O1X_core(parent1=parent1, parent2=parent2, a=a, b=b)
     c2 = O1X_core(parent1=parent2, parent2=parent1, a=a, b=b)
     return c1, c2
@@ -50,6 +50,7 @@ end
 
 function O1X_core(; parent1::Vector{Int}, parent2::Vector{Int}, a::Int, b::Int)
     N = length(parent1)
+    @assert minimum(parent1) ≥ 1 && maximum(parent1) ≤ N
     @assert length(parent2) == N
     @assert 1 ≤ a ≤ b ≤ N
     child = similar(parent1)
@@ -86,7 +87,18 @@ end
 
 
 
-# ---- delimiter helpers ----
+# ---- helpers ----
+function choose_o1x_cuts(op::O1XCrossover, N::Int, rng::AbstractRNG)
+    @assert 0 < op.min_frac ≤ op.max_frac ≤ 1
+    wmin = max(2, floor(Int, op.min_frac * N))
+    wmax = max(wmin, floor(Int, op.max_frac * N))
+    wmax = min(wmax, N)
+
+    w = rand(rng, wmin:wmax)
+    a = rand(rng, 1:(N - w + 1))
+    b = a + w - 1
+    return a, b
+end
 @inline has_delims(x::Vector{Int}) = any(==(-1), x)
 
 strip_delims(x::Vector{Int}) = [g for g in x if g != -1]
