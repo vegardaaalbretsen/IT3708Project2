@@ -19,6 +19,7 @@ include("ga_config.jl")
 export GA, GAConfig
 export SwapMutator, mutate # Add more mutators
 export O1XCrossover, crossover # Add more crossovers
+export RandomGenerator, generate # Generators
 
     function GA(
             #fitness_fn::F,
