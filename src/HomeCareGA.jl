@@ -20,6 +20,7 @@ export GA, GAConfig
 export SwapMutator, mutate # Add more mutators
 export O1XCrossover, crossover # Add more crossovers
 export RandomGenerator, generate # Generators
+export TournamentSelector, RouletteWheelSelector, ElitistSelector, select # Add more selectors
 
     function GA(
             #fitness_fn::F,
