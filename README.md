@@ -148,7 +148,33 @@ pkg> test
 
 ---
 
+# Run the GA (shared script)
+
+Use `run_ga.jl` as the shared, editable experiment file.
+
+How to use it:
+
+1. Open `run_ga.jl`.
+2. Edit the variables at the top (instance, population size, generations, probabilities, seed, etc.).
+3. Run:
+
+   ```bash
+   julia --project=. run_ga.jl
+   ```
+
+Notes:
+
+- Set `OUTPUT_FILE = nothing` in `run_ga.jl` to disable writing a solution file.
+- The script builds `GAConfig` and runs `GA(instance_file, config; rng=StableRNG(seed))`.
+- Default instance is `train/train_0.json`.
+- `MAX_NURSES` is an upper bound for route slots (`nothing` reads `nbr_nurses` from instance).
+- `MUTATOR = :swap_any` lets the GA move `-1` separators, so it can decide how many nurses are actively used.
+
+---
+
 # Project Structure
+
+Includes `run_ga.jl` at the repository root for shared GA runs.
 
 ```
 IT3708Project2/
