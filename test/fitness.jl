@@ -1,8 +1,6 @@
 using Test
 using HomeCareGA
 
-const SPLIT = -1
-
 @info ("Testing fitness evaluation")
 @testset verbose=true "Fitness" begin
     # Small instance: depot=0, patients=1..3

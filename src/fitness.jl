@@ -2,7 +2,6 @@
 module Fitness
 
 using JSON3
-using Random: AbstractRNG
 
 export SPLIT, HCInstance, PenaltySchedule, FitnessWeights, FitnessBreakdown,
        load_instance, fitness, fitness_breakdown
