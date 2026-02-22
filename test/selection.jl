@@ -3,7 +3,8 @@ using Test
 using StableRNGs
 using HomeCareGA  # assumes you expose/select these; otherwise prefix with HomeCareGA.
 
-@testset "Selection" begin
+@info ("Testing selection")
+@testset verbose=true "Selection" begin
     rng = StableRNG(123)
 
     # Simple population: 6 individuals, fitness is deterministic

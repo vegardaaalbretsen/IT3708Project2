@@ -13,6 +13,7 @@ include("operators/crossover.jl")
 include("operators/selection.jl")
 include("operators/mutation.jl")
 include("operators/generators.jl")
+include("fitness.jl")
    
 include("ga_config.jl")
 
@@ -21,6 +22,10 @@ export SwapMutator, mutate # Add more mutators
 export O1XCrossover, crossover # Add more crossovers
 export RandomGenerator, generate # Generators
 export TournamentSelector, RouletteWheelSelector, ElitistSelector, select # Add more selectors
+using .Fitness
+
+export HCInstance, FitnessWeights, PenaltySchedule, FitnessBreakdown,
+       load_instance, fitness, fitness_breakdown, SPLIT
 
     function GA(
             #fitness_fn::F,
