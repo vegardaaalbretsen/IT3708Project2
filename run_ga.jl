@@ -16,17 +16,19 @@ include(joinpath(@__DIR__, "src", "algorithms", "plotting.jl"))
 
 const INSTANCE_FILE = "train/train_1.json"
 const OUTPUT_FILE = "results/best_solution.txt"   # Set to `nothing` to disable file output
+const ROUTE_PLOT_FILE = "results/best_routes.png"               # Route map plot output
+const FITNESS_ENTROPY_PLOT_FILE = "results/fitness_entropy.png" # Fitness + entropy plot output
 
 const RNG_SEED = 42
 const MAX_NURSES = nothing                         # `nothing` => use `nbr_nurses` from instance JSON (upper bound)
-const POP_SIZE = 100
-const MAX_GENERATIONS = 25
+const POP_SIZE = 10000
+const MAX_GENERATIONS = 100000
 
 const P_C = 0.90
-const P_M = 0.20
+const P_M = 0.05
 const PARENT_SELECTION = :tournament              # :tournament or :roulette
-const TOURNAMENT_K = 3                            # Used only if PARENT_SELECTION = :tournament
-const NUM_ELITES = 2
+const TOURNAMENT_K = 4                            # Used only if PARENT_SELECTION = :tournament
+const NUM_ELITES = 10
 const MUTATOR = :swap_any                         # :swap_any lets GA move -1 separators and change how many nurses are active
 
 const O1X_MIN_FRAC = 0.05
@@ -110,6 +112,10 @@ function main()
     if !isnothing(output_path)
         mkpath(dirname(output_path))
     end
+    route_plot_path = _resolve_path(ROUTE_PLOT_FILE)
+    fitness_entropy_plot_path = _resolve_path(FITNESS_ENTROPY_PLOT_FILE)
+    mkpath(dirname(route_plot_path))
+    mkpath(dirname(fitness_entropy_plot_path))
 
     instance = load_instance(instance_path)
     config = GAConfig(
@@ -134,7 +140,16 @@ function main()
     result = GA(instance_path, config; rng=StableRNG(RNG_SEED))
 
     plt = plot_routes_stream(result.best_individual, instance_path)
-    savefig(plt, joinpath(@__DIR__, "results", "best_routes.png"))
+    savefig(plt, route_plot_path)
+    if isempty(result.history) || isempty(result.entropy_history)
+        @warn "Skipping fitness/entropy plot because history is empty. Set KEEP_HISTORY = true."
+    else
+        plot_fitness_entropy(
+            result.history,
+            result.entropy_history;
+            output_file=fitness_entropy_plot_path
+        )
+    end
 
     println("Run complete")
     println("  Instance:        ", instance_path)
@@ -143,6 +158,8 @@ function main()
     println("  Best individual: ", result.best_individual)
     println("  Max nurses:      ", max_nurses)
     println("  Mutator:         ", MUTATOR)
+    println("  Route plot:      ", route_plot_path)
+    println("  Fitness+entropy: ", fitness_entropy_plot_path)
     if !isnothing(output_path)
         println("  Solution file:   ", output_path)
     end

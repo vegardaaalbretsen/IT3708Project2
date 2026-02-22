@@ -37,6 +37,7 @@ Base.@kwdef struct GARunResult
     best_fitness::Float64
     best_generation::Int
     history::Vector{Float64}
+    entropy_history::Vector{Float64} = Float64[]
     population::Vector{Vector{Int}}
     fitnesses::Vector{Float64}
 end
@@ -85,6 +86,40 @@ function _evaluate_population(
         )
     end
     return scores
+end
+
+function _population_entropy(population::Vector{Vector{Int}})::Float64
+    pop_size = length(population)
+    pop_size == 0 && return 0.0
+
+    chrom_length = length(population[1])
+    chrom_length == 0 && return 0.0
+
+    total_entropy = 0.0
+
+    for pos in 1:chrom_length
+        counts = Dict{Int, Int}()
+        @inbounds for individual in population
+            gene = individual[pos]
+            counts[gene] = get(counts, gene, 0) + 1
+        end
+
+        k = length(counts)
+        if k <= 1
+            continue
+        end
+
+        h = 0.0
+        @inbounds for count in values(counts)
+            p = count / pop_size
+            h -= p * log(p)
+        end
+
+        # Normalize to [0,1] at each position to make values easier to compare.
+        total_entropy += h / log(k)
+    end
+
+    return total_entropy / chrom_length
 end
 
 function _make_children(
@@ -161,6 +196,7 @@ function run(
     population = _initialize_population(ga_config, initial_population, rng)
 
     history = ga_config.keep_history ? Vector{Float64}(undef, max_generations) : Float64[]
+    entropy_history = ga_config.keep_history ? Vector{Float64}(undef, max_generations) : Float64[]
     best_individual = copy(population[1])
     best_fitness = Inf
     best_generation = 1
@@ -187,6 +223,7 @@ function run(
 
         if ga_config.keep_history
             history[generation] = generation_best_fit
+            entropy_history[generation] = _population_entropy(population)
         end
 
         if ga_config.verbose &&
@@ -222,6 +259,7 @@ function run(
         best_fitness=best_fitness,
         best_generation=best_generation,
         history=history,
+        entropy_history=entropy_history,
         population=population,
         fitnesses=population_fitness
     )

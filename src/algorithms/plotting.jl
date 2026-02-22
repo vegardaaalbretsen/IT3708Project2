@@ -98,3 +98,54 @@ function plot_routes_stream(
     display(plt)
     return plt
 end
+
+"""
+    plot_fitness_entropy(fitness_history::Vector{Float64}, entropy_history::Vector{Float64};
+                         output_file::Union{Nothing,AbstractString}=nothing)
+
+Plot best-fitness history and population-entropy history over generations.
+If `output_file` is provided, the figure is saved to that path.
+"""
+function plot_fitness_entropy(
+    fitness_history::Vector{Float64},
+    entropy_history::Vector{Float64};
+    output_file::Union{Nothing,AbstractString}=nothing
+)
+    n_fit = length(fitness_history)
+    n_ent = length(entropy_history)
+    n_fit > 0 || throw(ArgumentError("fitness_history is empty. Enable keep_history in GAConfig."))
+    n_ent > 0 || throw(ArgumentError("entropy_history is empty. Enable keep_history in GAConfig."))
+    n_fit == n_ent || throw(ArgumentError("fitness_history and entropy_history must have equal length."))
+
+    gens = 1:n_fit
+
+    p1 = plot(
+        gens,
+        fitness_history;
+        xlabel="Generation",
+        ylabel="Best fitness",
+        title="Best Fitness per Generation",
+        label="Best fitness",
+        lw=2
+    )
+
+    p2 = plot(
+        gens,
+        entropy_history;
+        xlabel="Generation",
+        ylabel="Entropy (0-1)",
+        title="Population Entropy per Generation",
+        label="Entropy",
+        lw=2,
+        color=:darkgreen
+    )
+
+    plt = plot(p1, p2; layout=(2,1), size=(1200, 800), dpi=200)
+
+    if !isnothing(output_file)
+        savefig(plt, String(output_file))
+    end
+
+    display(plt)
+    return plt
+end
