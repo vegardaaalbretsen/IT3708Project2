@@ -15,27 +15,27 @@ include(joinpath(@__DIR__, "src", "algorithms", "plotting.jl"))
 # -----------------------------------------------------------------------------
 
 const INSTANCE_FILE = "train/train_1.json"
-const OUTPUT_FILE = "results/best_solution.txt"   # Set to `nothing` to disable file output
-const ROUTE_PLOT_FILE = "results/best_routes.png"               # Route map plot output
-const FITNESS_ENTROPY_PLOT_FILE = "results/fitness_entropy.png" # Fitness + entropy plot output
+const OUTPUT_FILE = "results/best_solution2.txt"   # Set to `nothing` to disable file output
 
 const RNG_SEED = 42
 const MAX_NURSES = nothing                         # `nothing` => use `nbr_nurses` from instance JSON (upper bound)
-const POP_SIZE = 10000
-const MAX_GENERATIONS = 100000
+const POP_SIZE = 25000
+const MAX_GENERATIONS = 1000
 
 const P_C = 0.90
-const P_M = 0.05
+const P_M = 0.07
+const P_LS = 0.10
 const PARENT_SELECTION = :tournament              # :tournament or :roulette
 const TOURNAMENT_K = 4                            # Used only if PARENT_SELECTION = :tournament
 const NUM_ELITES = 10
 const MUTATOR = :swap_any                         # :swap_any lets GA move -1 separators and change how many nurses are active
+const USE_LOCAL_SEARCH = true
 
-const O1X_MIN_FRAC = 0.05
+const O1X_MIN_FRAC = 0.07
 const O1X_MAX_FRAC = 0.30
 
 const VERBOSE = true
-const LOG_EVERY = 25
+const LOG_EVERY = 250
 const KEEP_HISTORY = true
 
 # Fitness and penalty settings
@@ -97,6 +97,7 @@ function _validate()
     NUM_ELITES >= 0 || error("NUM_ELITES must be >= 0.")
     0.0 <= P_C <= 1.0 || error("P_C must be in [0, 1].")
     0.0 <= P_M <= 1.0 || error("P_M must be in [0, 1].")
+    0.0 <= P_LS <= 1.0 || error("P_LS must be in [0, 1].")
     0.0 < O1X_MIN_FRAC <= O1X_MAX_FRAC <= 1.0 || error("Require 0 < O1X_MIN_FRAC <= O1X_MAX_FRAC <= 1.")
     LOG_EVERY >= 0 || error("LOG_EVERY must be >= 0.")
 end
@@ -112,18 +113,16 @@ function main()
     if !isnothing(output_path)
         mkpath(dirname(output_path))
     end
-    route_plot_path = _resolve_path(ROUTE_PLOT_FILE)
-    fitness_entropy_plot_path = _resolve_path(FITNESS_ENTROPY_PLOT_FILE)
-    mkpath(dirname(route_plot_path))
-    mkpath(dirname(fitness_entropy_plot_path))
 
     instance = load_instance(instance_path)
     config = GAConfig(
         p_c = P_C,
         p_m = P_M,
+        p_ls = P_LS,
         selector = _build_selector(),
         crossover = O1XCrossover(min_frac=O1X_MIN_FRAC, max_frac=O1X_MAX_FRAC),
         mutator = _build_mutator(),
+        local_search = USE_LOCAL_SEARCH ? TwoOptLocalSearch() : nothing,
         survivor = ElitistSelector(num_elites=NUM_ELITES),
         generator = RandomGenerator(num_jobs=instance.N, num_routes=max_nurses),
         pop_size = POP_SIZE,
@@ -140,16 +139,7 @@ function main()
     result = GA(instance_path, config; rng=StableRNG(RNG_SEED))
 
     plt = plot_routes_stream(result.best_individual, instance_path)
-    savefig(plt, route_plot_path)
-    if isempty(result.history) || isempty(result.entropy_history)
-        @warn "Skipping fitness/entropy plot because history is empty. Set KEEP_HISTORY = true."
-    else
-        plot_fitness_entropy(
-            result.history,
-            result.entropy_history;
-            output_file=fitness_entropy_plot_path
-        )
-    end
+    savefig(plt, joinpath(@__DIR__, "results", "best_routes.png"))
 
     println("Run complete")
     println("  Instance:        ", instance_path)
@@ -158,8 +148,7 @@ function main()
     println("  Best individual: ", result.best_individual)
     println("  Max nurses:      ", max_nurses)
     println("  Mutator:         ", MUTATOR)
-    println("  Route plot:      ", route_plot_path)
-    println("  Fitness+entropy: ", fitness_entropy_plot_path)
+    println("  Local search:    ", USE_LOCAL_SEARCH ? "2-opt (p_ls=$(P_LS))" : "disabled")
     if !isnothing(output_path)
         println("  Solution file:   ", output_path)
     end

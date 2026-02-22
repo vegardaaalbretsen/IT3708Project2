@@ -15,6 +15,7 @@ include("operators/selection.jl")
 include("operators/mutation.jl")
 include("operators/generators.jl")
 include("fitness.jl")
+include("operators/local_search.jl")
 
 module Algorithms
 include("algorithms/logging.jl")
@@ -26,6 +27,7 @@ export GA, GARunResult, GAConfig
 export SwapMutator, SwapAnyMutator, mutate # Add more mutators
 export O1XCrossover, crossover # Add more crossovers
 export RandomGenerator, generate # Generators
+export LocalSearch, TwoOptLocalSearch, improve # Local search
 export TournamentSelector, RouletteWheelSelector, ElitistSelector, select # Add more selectors
 using .Fitness
 
@@ -45,6 +47,7 @@ end
 function _validate_run_config(ga_config::GAConfig, max_generations::Int)
     0.0 <= ga_config.p_c <= 1.0 || throw(ArgumentError("ga_config.p_c must be in [0, 1]."))
     0.0 <= ga_config.p_m <= 1.0 || throw(ArgumentError("ga_config.p_m must be in [0, 1]."))
+    0.0 <= ga_config.p_ls <= 1.0 || throw(ArgumentError("ga_config.p_ls must be in [0, 1]."))
     ga_config.pop_size > 0 || throw(ArgumentError("ga_config.pop_size must be > 0."))
     max_generations > 0 || throw(ArgumentError("max_generations must be > 0."))
     ga_config.log_every >= 0 || throw(ArgumentError("ga_config.log_every must be >= 0."))
@@ -235,6 +238,22 @@ function run(
 
         parents, _ = select(ga_config.selector, population, population_fitness)
         children = _make_children(parents, ga_config, rng)
+
+        if !isnothing(ga_config.local_search) && ga_config.p_ls > 0.0
+            @inbounds for i in eachindex(children)
+                if rand(rng) < ga_config.p_ls
+                    children[i] = improve(
+                        ga_config.local_search,
+                        children[i],
+                        instance,
+                        ga_config,
+                        generation,
+                        max_generations
+                    )
+                end
+            end
+        end
+
         child_fitness = _evaluate_population(
             children,
             instance,

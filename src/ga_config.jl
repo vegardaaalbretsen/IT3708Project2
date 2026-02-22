@@ -2,11 +2,13 @@
 Base.@kwdef struct GAConfig
     p_c::Float64 # Probability of crossover
     p_m::Float64 # Probability of mutation
+    p_ls::Float64 = 0.10 # Probability of local search
 
     # Core operators
     selector::ParentSelector
     crossover::Crossover
     mutator::Mutator
+    local_search::Union{Nothing, LocalSearch} = TwoOptLocalSearch()
     survivor::SurvivorSelector
 
     # Run configuration
