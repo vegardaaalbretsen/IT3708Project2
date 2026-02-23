@@ -286,3 +286,4 @@ function fitness_breakdown(chrom::Vector{Int},
 end
 
 end # module
+

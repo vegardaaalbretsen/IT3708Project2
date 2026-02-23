@@ -19,20 +19,20 @@ const OUTPUT_FILE = "results/best_solution2.txt"   # Set to `nothing` to disable
 
 const RNG_SEED = 42
 const MAX_NURSES = nothing                         # `nothing` => use `nbr_nurses` from instance JSON (upper bound)
-const POP_SIZE = 25000
-const MAX_GENERATIONS = 1000
+const POP_SIZE = 1000
+const MAX_GENERATIONS = 10000
 
 const P_C = 0.90
-const P_M = 0.07
-const P_LS = 0.10
+const P_M = 0.06
+const P_LS = 0.2
 const PARENT_SELECTION = :tournament              # :tournament or :roulette
-const TOURNAMENT_K = 4                            # Used only if PARENT_SELECTION = :tournament
+const TOURNAMENT_K = 3                            # Used only if PARENT_SELECTION = :tournament
 const NUM_ELITES = 10
 const MUTATOR = :swap_any                         # :swap_any lets GA move -1 separators and change how many nurses are active
 const USE_LOCAL_SEARCH = true
 
 const O1X_MIN_FRAC = 0.07
-const O1X_MAX_FRAC = 0.30
+const O1X_MAX_FRAC = 0.15
 
 const VERBOSE = true
 const LOG_EVERY = 250
