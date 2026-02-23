@@ -1,49 +1,32 @@
 using JSON3
+using Fitness.SPLIT
 
-const SPLIT = -1
 
-# Helper function to calculate total route time using travel_times from instance
+# Helper function to calculate total travel time (only travel times, no wait/care)
 function calculate_route_duration(route::Vector{Int}, instance)
     if isempty(route)
         return 0.0
     end
-    
-    # Extract travel times matrix, patient info
+
+    # Extract travel times matrix
     travel_times = instance["travel_times"]
-    patients_info = Dict{Int, Tuple{Int, Int, Int}}()  # start_time, end_time, care_time
-    
-    for (patient_id_str, patient_data) in instance["patients"]
-        patient_id = parse(Int, String(patient_id_str))
-        patients_info[patient_id] = (patient_data["start_time"], patient_data["end_time"], patient_data["care_time"])
-    end
-    
-    # Calculate total time: travel + wait + care times
-    # Node 0 = depot, Node 1-N = patients
-    current_time = 0.0  # Start at depot at time 0
+
+    # Node indexing: 0 = depot, 1..N = patients. JSON matrix is 1-indexed arrays.
+    total_travel = 0.0
     current_node = 0
-    
+
     for patient_id in route
-        # Travel to patient
-        travel_time = travel_times[current_node + 1][patient_id + 1]  # Julia 1-indexed
-        current_time += travel_time
-        
-        # Wait if we arrive before start_time
-        start_time, end_time, care_time = patients_info[patient_id]
-        if current_time < start_time
-            current_time = start_time
-        end
-        
-        # Care time at patient
-        current_time += care_time
-        
+        # Travel from current_node to patient_id
+        travel_time = Float64(travel_times[current_node + 1][patient_id + 1])
+        total_travel += travel_time
         current_node = patient_id
     end
-    
+
     # Return to depot
-    return_travel = travel_times[current_node + 1][0 + 1]
-    current_time += return_travel
-    
-    return round(current_time, digits=2)
+    return_travel = Float64(travel_times[current_node + 1][1])
+    total_travel += return_travel
+
+    return round(total_travel, digits=2)
 end
 
 """
@@ -86,7 +69,7 @@ function log_solution(
         println(io, "Instance: $instance_name")
         println(io, "Nurse capacity: $nurse_capacity")
         println(io, "Depot return time: $depot_return_time")
-        println(io, "-" ^ 110)
+        println(io, "-" ^ 140)
         
         # Parse routes from solution
         routes = Vector{Int}[]
@@ -107,22 +90,24 @@ function log_solution(
             push!(routes, current_route)
         end
         
-        # Print each nurse route
+        # Print each nurse route and accumulate total travel time
+        total_travel = 0.0
         for (nurse_idx, route) in enumerate(routes)
-            # Calculate total demand and route duration
+            # Calculate total demand and route duration (travel-only)
             total_demand = 0
             route_duration = calculate_route_duration(route, instance)
-            
+            total_travel += route_duration
+
             for pid in route
                 if haskey(instance["patients"], string(pid))
                     patient = instance["patients"][string(pid)]
                     total_demand += patient["demand"]
                 end
             end
-            
+
             # Build route string with time windows
             route_str = "D (0)"
-            
+
             for patient_id in route
                 if haskey(patients_info, patient_id)
                     start_time, end_time, care_time = patients_info[patient_id]
@@ -131,17 +116,20 @@ function log_solution(
                     route_str *= " → $patient_id"
                 end
             end
-            
+
             route_str *= " → D ($route_duration)"
-            
+
             # Print nurse line
             patient_count = length(route)
-            
+
             println(io, "Nurse $nurse_idx    $total_demand    $patient_count    $route_str")
-            println(io, "    :            :          :                                :")
+            # Print separator line only between nurse entries (not after last)
+            if nurse_idx != length(routes)
+                println(io, "    :            :          :                                :")
+            end
         end
         
-        println(io, "-" ^ 110)
-        println(io, "Objective value (total duration): $objective_value")
+        println(io, "-" ^ 140)
+        println(io, "Objective value (total travel time): $total_travel")
     end
 end
