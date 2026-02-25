@@ -162,6 +162,14 @@ How to use it:
    julia --project=. run_ga.jl
    ```
 
+   For better performance, multithreading is recommended:
+
+   ```bash
+   julia -t auto --project=. run_ga.jl
+   ```
+
+   This enables Julia to use multiple CPU threads for population fitness evaluation.
+
 Notes:
 
 - Set `OUTPUT_FILE = nothing` in `run_ga.jl` to disable writing a solution file.
