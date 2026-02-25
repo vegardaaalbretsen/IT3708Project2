@@ -1,4 +1,5 @@
 using JSON3
+using HomeCareGA.Fitness: SPLIT
 
 
 # Helper function to calculate total travel time (only travel times, no wait/care)
