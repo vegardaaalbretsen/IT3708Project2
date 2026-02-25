@@ -1,7 +1,6 @@
 using Plots
 using Colors
 using JSON3
-using Fitness.SPLIT
 
 """
     plot_routes_stream(solution::Vector{Int}, json_file::String)
