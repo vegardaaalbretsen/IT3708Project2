@@ -73,4 +73,36 @@ Generator operators to be implemented, and therefore tested:
             @test pop1 != pop2
         end
     end
+
+    @testset "canonicalize_chromosome" begin
+        raw = [3, -1, -1, 2, 1, -1]
+        canon = canonicalize_chromosome(raw)
+
+        @test canon == [2, 1, -1, 3, -1, -1]
+        @test canonicalize_chromosome(canon) == canon
+        @test count(==(-1), canon) == count(==(-1), raw)
+        @test sort(filter(!=(-1), canon)) == sort(filter(!=(-1), raw))
+    end
+
+    @testset "SweepTWGenerator" begin
+        instance_path = normpath(joinpath(@__DIR__, "..", "train", "train_1.json"))
+        gen = SweepTWGenerator(instance_path; num_routes=25)
+
+        pop_size = 5
+        chrom_length = gen.num_jobs + gen.num_routes - 1
+        population = generate(gen; pop_size=pop_size, rng=StableRNG(987))
+
+        @test length(population) == pop_size
+        for individual in population
+            @test length(individual) == chrom_length
+            @test count(==(-1), individual) == gen.num_routes - 1
+            @test sort(filter(!=(-1), individual)) == collect(1:gen.num_jobs)
+        end
+
+        rng1 = StableRNG(555)
+        rng2 = StableRNG(555)
+        pop1 = generate(gen; pop_size=3, rng=rng1)
+        pop2 = generate(gen; pop_size=3, rng=rng2)
+        @test pop1 == pop2
+    end
 end

@@ -13,6 +13,7 @@ using Random: AbstractRNG, rand
 include("operators/crossover.jl")
 include("operators/selection.jl")
 include("operators/mutation.jl")
+include("utils/chromosome_utils.jl")
 include("operators/generators.jl")
 include("fitness.jl")
 include("operators/local_search.jl")
@@ -26,7 +27,7 @@ include("ga_config.jl")
 export GA, GARunResult, GAConfig
 export SwapMutator, SwapAnyMutator, mutate # Add more mutators
 export O1XCrossover, crossover # Add more crossovers
-export RandomGenerator, generate # Generators
+export RandomGenerator, SweepTWGenerator, generate, canonicalize_chromosome # Generators
 export LocalSearch, TwoOptLocalSearch, improve # Local search
 export TournamentSelector, RouletteWheelSelector, ElitistSelector, select # Add more selectors
 using .Fitness
@@ -61,13 +62,14 @@ function _initialize_population(
 )::Vector{Vector{Int}}
     if !isnothing(initial_population)
         isempty(initial_population) && throw(ArgumentError("initial_population cannot be empty."))
-        return [copy(ind) for ind in initial_population]
+        return [canonicalize_chromosome(copy(ind)) for ind in initial_population]
     end
 
     isnothing(ga_config.generator) && throw(ArgumentError(
         "ga_config.generator is required when initial_population is not provided."
     ))
-    return generate(ga_config.generator; pop_size=ga_config.pop_size, rng=rng)
+    population = generate(ga_config.generator; pop_size=ga_config.pop_size, rng=rng)
+    return [canonicalize_chromosome(ind) for ind in population]
 end
 
 function _evaluate_population(
@@ -151,6 +153,9 @@ function _make_children(
         if rand(rng) < ga_config.p_m
             child2 = mutate(mutator=ga_config.mutator, individual=child2, rng=rng)
         end
+
+        child1 = canonicalize_chromosome(child1)
+        child2 = canonicalize_chromosome(child2)
 
         children[i] = child1
         if i + 1 <= pop_size

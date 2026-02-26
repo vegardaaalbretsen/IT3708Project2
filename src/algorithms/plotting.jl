@@ -15,6 +15,7 @@ Example:
 function plot_routes_stream(
     solution::Vector{Int},
     json_file::String;
+    show_plot::Bool=true
 )
     # Load and parse JSON instance
     instance = JSON3.read(read(json_file, String))
@@ -94,13 +95,16 @@ function plot_routes_stream(
         markercolor = :black
     )
 
-    display(plt)
+    if show_plot
+        display(plt)
+    end
     return plt
 end
 
 """
     plot_fitness_entropy(fitness_history::Vector{Float64}, entropy_history::Vector{Float64};
-                         output_file::Union{Nothing,AbstractString}=nothing)
+                         output_file::Union{Nothing,AbstractString}=nothing,
+                         show_plot::Bool=true)
 
 Plot best-fitness history and population-entropy history over generations.
 If `output_file` is provided, the figure is saved to that path.
@@ -108,7 +112,8 @@ If `output_file` is provided, the figure is saved to that path.
 function plot_fitness_entropy(
     fitness_history::Vector{Float64},
     entropy_history::Vector{Float64};
-    output_file::Union{Nothing,AbstractString}=nothing
+    output_file::Union{Nothing,AbstractString}=nothing,
+    show_plot::Bool=true
 )
     n_fit = length(fitness_history)
     n_ent = length(entropy_history)
@@ -145,6 +150,8 @@ function plot_fitness_entropy(
         savefig(plt, String(output_file))
     end
 
-    display(plt)
+    if show_plot
+        display(plt)
+    end
     return plt
 end
