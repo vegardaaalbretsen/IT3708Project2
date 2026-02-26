@@ -16,6 +16,9 @@ include(joinpath(@__DIR__, "src", "algorithms", "plotting.jl"))
 
 const INSTANCE_FILE = "train/train_1.json"
 const OUTPUT_FILE = "results/best_solution2.txt"   # Set to `nothing` to disable file output
+const ROUTES_PLOT_FILE = "results/best_routes.png"  # Set to `nothing` to disable saving
+const FITNESS_ENTROPY_PLOT_FILE = "results/fitness_entropy.png" # Set to `nothing` to disable saving
+const SHOW_PLOTS = false                             # Set true for interactive display
 
 const RNG_SEED = 42
 const MAX_NURSES = nothing                         # `nothing` => use `nbr_nurses` from instance JSON (upper bound)
@@ -29,6 +32,7 @@ const PARENT_SELECTION = :tournament              # :tournament or :roulette
 const TOURNAMENT_K = 3                            # Used only if PARENT_SELECTION = :tournament
 const NUM_ELITES = 10
 const MUTATOR = :swap_any                         # :swap_any lets GA move -1 separators and change how many nurses are active
+const GENERATOR = :sweep_tw                       # :random or :sweep_tw
 const USE_LOCAL_SEARCH = true
 
 const O1X_MIN_FRAC = 0.07
@@ -59,6 +63,10 @@ function _resolve_path(path::AbstractString)::String
     return isabspath(path) ? String(path) : normpath(joinpath(@__DIR__, path))
 end
 
+function _resolve_optional_path(path::Union{Nothing, AbstractString})::Union{Nothing, String}
+    return isnothing(path) ? nothing : _resolve_path(path)
+end
+
 function _build_selector()
     if PARENT_SELECTION == :tournament
         TOURNAMENT_K > 0 || error("TOURNAMENT_K must be > 0.")
@@ -77,6 +85,16 @@ function _build_mutator()
         return SwapAnyMutator()
     else
         error("MUTATOR must be :swap or :swap_any.")
+    end
+end
+
+function _build_generator(instance::HCInstance, instance_path::AbstractString, max_nurses::Int)
+    if GENERATOR == :random
+        return RandomGenerator(num_jobs=instance.N, num_routes=max_nurses)
+    elseif GENERATOR == :sweep_tw
+        return SweepTWGenerator(instance_path; num_routes=max_nurses)
+    else
+        error("GENERATOR must be :random or :sweep_tw.")
     end
 end
 
@@ -99,6 +117,7 @@ function _validate()
     0.0 <= P_M <= 1.0 || error("P_M must be in [0, 1].")
     0.0 <= P_LS <= 1.0 || error("P_LS must be in [0, 1].")
     0.0 < O1X_MIN_FRAC <= O1X_MAX_FRAC <= 1.0 || error("Require 0 < O1X_MIN_FRAC <= O1X_MAX_FRAC <= 1.")
+    (GENERATOR == :random || GENERATOR == :sweep_tw) || error("GENERATOR must be :random or :sweep_tw.")
     LOG_EVERY >= 0 || error("LOG_EVERY must be >= 0.")
 end
 
@@ -109,9 +128,18 @@ function main()
     isfile(instance_path) || error("Instance file does not exist: $instance_path")
     max_nurses = isnothing(MAX_NURSES) ? _max_nurses_from_instance(instance_path) : MAX_NURSES
 
-    output_path = isnothing(OUTPUT_FILE) ? nothing : _resolve_path(OUTPUT_FILE)
+    output_path = _resolve_optional_path(OUTPUT_FILE)
+    routes_plot_path = _resolve_optional_path(ROUTES_PLOT_FILE)
+    fitness_entropy_plot_path = _resolve_optional_path(FITNESS_ENTROPY_PLOT_FILE)
+
     if !isnothing(output_path)
         mkpath(dirname(output_path))
+    end
+    if !isnothing(routes_plot_path)
+        mkpath(dirname(routes_plot_path))
+    end
+    if !isnothing(fitness_entropy_plot_path)
+        mkpath(dirname(fitness_entropy_plot_path))
     end
 
     instance = load_instance(instance_path)
@@ -124,7 +152,7 @@ function main()
         mutator = _build_mutator(),
         local_search = USE_LOCAL_SEARCH ? TwoOptLocalSearch() : nothing,
         survivor = ElitistSelector(num_elites=NUM_ELITES),
-        generator = RandomGenerator(num_jobs=instance.N, num_routes=max_nurses),
+        generator = _build_generator(instance, instance_path, max_nurses),
         pop_size = POP_SIZE,
         max_generations = MAX_GENERATIONS,
         fitness_weights = WEIGHTS,
@@ -138,8 +166,25 @@ function main()
 
     result = GA(instance_path, config; rng=StableRNG(RNG_SEED))
 
-    plt = plot_routes_stream(result.best_individual, instance_path)
-    savefig(plt, joinpath(@__DIR__, "results", "best_routes.png"))
+    if !isnothing(routes_plot_path)
+        route_plt = plot_routes_stream(result.best_individual, instance_path; show_plot=SHOW_PLOTS)
+        savefig(route_plt, routes_plot_path)
+    elseif SHOW_PLOTS
+        plot_routes_stream(result.best_individual, instance_path; show_plot=true)
+    end
+
+    if KEEP_HISTORY && !isempty(result.history) && !isempty(result.entropy_history)
+        if !isnothing(fitness_entropy_plot_path)
+            plot_fitness_entropy(
+                result.history,
+                result.entropy_history;
+                output_file=fitness_entropy_plot_path,
+                show_plot=SHOW_PLOTS
+            )
+        elseif SHOW_PLOTS
+            plot_fitness_entropy(result.history, result.entropy_history; show_plot=true)
+        end
+    end
 
     println("Run complete")
     println("  Instance:        ", instance_path)
@@ -148,9 +193,16 @@ function main()
     println("  Best individual: ", result.best_individual)
     println("  Max nurses:      ", max_nurses)
     println("  Mutator:         ", MUTATOR)
+    println("  Generator:       ", GENERATOR)
     println("  Local search:    ", USE_LOCAL_SEARCH ? "2-opt (p_ls=$(P_LS))" : "disabled")
     if !isnothing(output_path)
         println("  Solution file:   ", output_path)
+    end
+    if !isnothing(routes_plot_path)
+        println("  Routes plot:     ", routes_plot_path)
+    end
+    if !isnothing(fitness_entropy_plot_path) && KEEP_HISTORY
+        println("  Fit/Entropy plot:", fitness_entropy_plot_path)
     end
 end
 
