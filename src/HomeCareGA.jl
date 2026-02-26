@@ -78,14 +78,14 @@ function _evaluate_population(
     max_generations::Int
 )::Vector{Float64}
     scores = Vector{Float64}(undef, length(population))
-    @inbounds for i in eachindex(population)
-        scores[i] = fitness(
+    Threads.@threads :dynamic for i in eachindex(population)
+        @inbounds scores[i] = fitness(
             population[i],
             instance;
-            weights=ga_config.fitness_weights,
-            schedule=ga_config.penalty_schedule,
-            generation=generation,
-            max_generations=max_generations
+            weights = ga_config.fitness_weights,
+            schedule = ga_config.penalty_schedule,
+            generation = generation,
+            max_generations = max_generations
         )
     end
     return scores
