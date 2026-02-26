@@ -1,10 +1,13 @@
+"""
+Comparison function for sorting routes
+    
+Uses the ID of the first patient 
+as an "anchor" to ensure deterministic route ordering. This prevents 
+identical sets of routes from being treated as different chromosomes 
+while preserving the internal sequence optimized by the GA.
+"""
 @inline function _route_lt(a::Vector{Int}, b::Vector{Int})
-    @inbounds for i in 1:min(length(a), length(b))
-        if a[i] != b[i]
-            return a[i] < b[i]
-        end
-    end
-    return length(a) < length(b)
+    return a[1] < b[1]
 end
 
 """
@@ -50,3 +53,16 @@ function canonicalize_chromosome(individual::Vector{Int})::Vector{Int}
 
     return out
 end
+
+
+"""
+[Deprecated]
+@inline function _route_lt(a::Vector{Int}, b::Vector{Int})
+    @inbounds for i in 1:min(length(a), length(b))
+        if a[i] != b[i]
+            return a[i] < b[i]
+        end
+    end
+    return length(a) < length(b)
+end
+"""
