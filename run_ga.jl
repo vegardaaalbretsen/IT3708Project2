@@ -15,19 +15,19 @@ include(joinpath(@__DIR__, "src", "algorithms", "plotting.jl"))
 # -----------------------------------------------------------------------------
 
 const INSTANCE_FILE = "train/train_1.json"
-const OUTPUT_FILE = "results/best_solution2.txt"   # Set to `nothing` to disable file output
-const ROUTES_PLOT_FILE = "results/best_routes.png"  # Set to `nothing` to disable saving
-const FITNESS_ENTROPY_PLOT_FILE = "results/fitness_entropy.png" # Set to `nothing` to disable saving
+const OUTPUT_FILE = "results/logs/best_solution.txt"   # Set to `nothing` to disable file output
+const ROUTES_PLOT_FILE = "results/plots/routes/best_routes.png"  # Set to `nothing` to disable saving
+const FITNESS_ENTROPY_PLOT_FILE = "results/plots/entropy/fitness_entropy.png" # Set to `nothing` to disable saving
 const SHOW_PLOTS = false                             # Set true for interactive display
 
 const RNG_SEED = 42
-const MAX_NURSES = nothing                         # `nothing` => use `nbr_nurses` from instance JSON (upper bound)
-const POP_SIZE = 1000
-const MAX_GENERATIONS = 10000
+const MAX_NURSES = 5                               # `nothing` => use `nbr_nurses` from instance JSON (upper bound)
+const POP_SIZE = 250
+const MAX_GENERATIONS = 1000
 
-const P_C = 0.90
-const P_M = 0.06
-const P_LS = 0.2
+const P_C = 0.85
+const P_M = 0.10
+const P_LS = 0.15
 const PARENT_SELECTION = :tournament              # :tournament or :roulette
 const TOURNAMENT_K = 3                            # Used only if PARENT_SELECTION = :tournament
 const NUM_ELITES = 10
@@ -65,6 +65,19 @@ end
 
 function _resolve_optional_path(path::Union{Nothing, AbstractString})::Union{Nothing, String}
     return isnothing(path) ? nothing : _resolve_path(path)
+end
+
+function _instance_name_prefix(instance_path::AbstractString)::String
+    # Example: ".../train_1.json" -> "train_1_"
+    return splitext(basename(instance_path))[1] * "_"
+end
+
+function _with_prefix(path::Union{Nothing, AbstractString}, prefix::AbstractString)::Union{Nothing, String}
+    if isnothing(path)
+        return nothing
+    end
+    full = _resolve_path(path)
+    return joinpath(dirname(full), prefix * basename(full))
 end
 
 function _build_selector()
@@ -127,10 +140,11 @@ function main()
     instance_path = _resolve_path(INSTANCE_FILE)
     isfile(instance_path) || error("Instance file does not exist: $instance_path")
     max_nurses = isnothing(MAX_NURSES) ? _max_nurses_from_instance(instance_path) : MAX_NURSES
+    file_prefix = _instance_name_prefix(instance_path)
 
-    output_path = _resolve_optional_path(OUTPUT_FILE)
-    routes_plot_path = _resolve_optional_path(ROUTES_PLOT_FILE)
-    fitness_entropy_plot_path = _resolve_optional_path(FITNESS_ENTROPY_PLOT_FILE)
+    output_path = _with_prefix(OUTPUT_FILE, file_prefix)
+    routes_plot_path = _with_prefix(ROUTES_PLOT_FILE, file_prefix)
+    fitness_entropy_plot_path = _with_prefix(FITNESS_ENTROPY_PLOT_FILE, file_prefix)
 
     if !isnothing(output_path)
         mkpath(dirname(output_path))
