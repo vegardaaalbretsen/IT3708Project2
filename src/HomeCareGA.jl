@@ -27,7 +27,8 @@ include("ga_config.jl")
 export GA, GARunResult, GAConfig
 export SwapMutator, SwapAnyMutator, mutate # Add more mutators
 export O1XCrossover, crossover # Add more crossovers
-export RandomGenerator, SweepTWGenerator, generate, canonicalize_chromosome # Generators
+export RandomGenerator, SweepTWGenerator, generate, canonicalize_chromosome,
+       active_route_count, enforce_min_active_routes # Generators / chromosome utils
 export LocalSearch, TwoOptLocalSearch, improve # Local search
 export TournamentSelector, RouletteWheelSelector, ElitistSelector, select # Add more selectors
 using .Fitness
@@ -50,6 +51,7 @@ function _validate_run_config(ga_config::GAConfig, max_generations::Int)
     0.0 <= ga_config.p_m <= 1.0 || throw(ArgumentError("ga_config.p_m must be in [0, 1]."))
     0.0 <= ga_config.p_ls <= 1.0 || throw(ArgumentError("ga_config.p_ls must be in [0, 1]."))
     ga_config.pop_size > 0 || throw(ArgumentError("ga_config.pop_size must be > 0."))
+    ga_config.min_active_routes > 0 || throw(ArgumentError("ga_config.min_active_routes must be > 0."))
     max_generations > 0 || throw(ArgumentError("max_generations must be > 0."))
     ga_config.log_every >= 0 || throw(ArgumentError("ga_config.log_every must be >= 0."))
     return nothing
@@ -62,14 +64,14 @@ function _initialize_population(
 )::Vector{Vector{Int}}
     if !isnothing(initial_population)
         isempty(initial_population) && throw(ArgumentError("initial_population cannot be empty."))
-        return [canonicalize_chromosome(copy(ind)) for ind in initial_population]
+        return [enforce_min_active_routes(copy(ind), ga_config.min_active_routes) for ind in initial_population]
     end
 
     isnothing(ga_config.generator) && throw(ArgumentError(
         "ga_config.generator is required when initial_population is not provided."
     ))
     population = generate(ga_config.generator; pop_size=ga_config.pop_size, rng=rng)
-    return [canonicalize_chromosome(ind) for ind in population]
+    return [enforce_min_active_routes(ind, ga_config.min_active_routes) for ind in population]
 end
 
 function _evaluate_population(
@@ -154,8 +156,8 @@ function _make_children(
             child2 = mutate(mutator=ga_config.mutator, individual=child2, rng=rng)
         end
 
-        child1 = canonicalize_chromosome(child1)
-        child2 = canonicalize_chromosome(child2)
+        child1 = enforce_min_active_routes(child1, ga_config.min_active_routes)
+        child2 = enforce_min_active_routes(child2, ga_config.min_active_routes)
 
         children[i] = child1
         if i + 1 <= pop_size

@@ -15,6 +15,7 @@ Base.@kwdef struct GAConfig
     generator::Union{Nothing, Generator} = nothing
     pop_size::Int = 100
     max_generations::Int = 200
+    min_active_routes::Int = 1
 
     # Fitness configuration
     fitness_weights::Fitness.FitnessWeights = Fitness.FitnessWeights()

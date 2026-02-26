@@ -3,6 +3,39 @@ using Colors
 using JSON3
 using HomeCareGA.Fitness: SPLIT
 
+@inline function _quantile_sorted(sorted_vals::Vector{Float64}, q::Float64)::Float64
+    n = length(sorted_vals)
+    n > 0 || error("Cannot compute quantile of empty vector.")
+    qc = clamp(q, 0.0, 1.0)
+    idx = 1 + floor(Int, (n - 1) * qc)
+    return sorted_vals[idx]
+end
+
+function _bounded_ylim(
+    values::Vector{Float64};
+    lower_q::Float64=0.0,
+    upper_q::Float64=0.98,
+    pad_frac::Float64=0.04
+)
+    finite_vals = [v for v in values if isfinite(v)]
+    isempty(finite_vals) && error("All values are non-finite.")
+
+    sort!(finite_vals)
+    y_lo = _quantile_sorted(finite_vals, lower_q)
+    y_hi = _quantile_sorted(finite_vals, upper_q)
+
+    if y_hi <= y_lo
+        y_hi = finite_vals[end]
+        if y_hi <= y_lo
+            y_hi = y_lo + 1.0
+        end
+    end
+
+    span = y_hi - y_lo
+    pad = max(1e-9, span * max(0.0, pad_frac))
+    return (y_lo - pad, y_hi + pad)
+end
+
 """
     plot_routes_stream(solution::Vector{Int}, json_file::String)
 
@@ -113,7 +146,13 @@ function plot_fitness_entropy(
     fitness_history::Vector{Float64},
     entropy_history::Vector{Float64};
     output_file::Union{Nothing,AbstractString}=nothing,
-    show_plot::Bool=true
+    show_plot::Bool=true,
+    fitness_ylims::Union{Nothing,Tuple{Float64,Float64}}=nothing,
+    fitness_ymax::Union{Nothing,Float64}=nothing,
+    bounded_fitness_axis::Bool=true,
+    fitness_lower_quantile::Float64=0.0,
+    fitness_upper_quantile::Float64=0.98,
+    fitness_axis_pad_frac::Float64=0.04
 )
     n_fit = length(fitness_history)
     n_ent = length(entropy_history)
@@ -122,6 +161,36 @@ function plot_fitness_entropy(
     n_fit == n_ent || throw(ArgumentError("fitness_history and entropy_history must have equal length."))
 
     gens = 1:n_fit
+    finite_fit = [v for v in fitness_history if isfinite(v)]
+    isempty(finite_fit) && throw(ArgumentError("fitness_history has no finite values."))
+
+    applied_fitness_ylims = if !isnothing(fitness_ylims)
+        y0, y1 = fitness_ylims
+        y0 < y1 || throw(ArgumentError("fitness_ylims must satisfy ymin < ymax."))
+        (y0, y1)
+    elseif !isnothing(fitness_ymax)
+        ymax_cap = fitness_ymax
+        isfinite(ymax_cap) || throw(ArgumentError("fitness_ymax must be finite."))
+        data_max = maximum(finite_fit)
+        ymax = min(ymax_cap, data_max)
+        ymin_data = minimum(finite_fit)
+        if ymax <= ymin_data
+            pad = max(1e-9, abs(ymax) * max(fitness_axis_pad_frac, 0.04), 1.0)
+            (ymax - pad, ymax)
+        else
+            pad = max(1e-9, (ymax - ymin_data) * fitness_axis_pad_frac)
+            (ymin_data - pad, ymax)
+        end
+    elseif bounded_fitness_axis
+        _bounded_ylim(
+            fitness_history;
+            lower_q=fitness_lower_quantile,
+            upper_q=fitness_upper_quantile,
+            pad_frac=fitness_axis_pad_frac
+        )
+    else
+        :auto
+    end
 
     p1 = plot(
         gens,
@@ -130,8 +199,25 @@ function plot_fitness_entropy(
         ylabel="Best fitness",
         title="Best Fitness per Generation",
         label="Best fitness",
-        lw=2
+        lw=2,
+        ylims=applied_fitness_ylims
     )
+
+    if applied_fitness_ylims != :auto
+        ymin, ymax = applied_fitness_ylims
+        clipped_idx = findall(v -> v > ymax, fitness_history)
+        if !isempty(clipped_idx)
+            scatter!(
+                p1,
+                clipped_idx,
+                fill(ymax, length(clipped_idx));
+                markershape=:utriangle,
+                markersize=4,
+                markercolor=:red,
+                label="Clipped high ($(length(clipped_idx)))"
+            )
+        end
+    end
 
     p2 = plot(
         gens,
