@@ -4,6 +4,23 @@ using HomeCareGA
 
 myrng = StableRNG(123)
 
+function _route_lengths(individual::Vector{Int})
+    lens = Int[]
+    cur = 0
+    for g in individual
+        if g == -1
+            push!(lens, cur)
+            cur = 0
+        else
+            cur += 1
+        end
+    end
+    push!(lens, cur)
+    return lens
+end
+
+@inline _active_routes(individual::Vector{Int}) = count(>(0), _route_lengths(individual))
+
 """
 Generator operators to be implemented, and therefore tested:
     Random
@@ -86,7 +103,7 @@ Generator operators to be implemented, and therefore tested:
 
     @testset "SweepTWGenerator" begin
         instance_path = normpath(joinpath(@__DIR__, "..", "train", "train_1.json"))
-        gen = SweepTWGenerator(instance_path; num_routes=25)
+        gen = SweepTWGenerator(instance_path; num_routes=25, shuffle_route_sizes=false)
 
         pop_size = 5
         chrom_length = gen.num_jobs + gen.num_routes - 1
@@ -104,5 +121,44 @@ Generator operators to be implemented, and therefore tested:
         pop1 = generate(gen; pop_size=3, rng=rng1)
         pop2 = generate(gen; pop_size=3, rng=rng2)
         @test pop1 == pop2
+    end
+
+    @testset "SweepTWGenerator can initialize fewer active routes than num_routes" begin
+        instance_path = normpath(joinpath(@__DIR__, "..", "train", "train_1.json"))
+        gen = SweepTWGenerator(
+            instance_path;
+            num_routes=10,
+            shuffle_route_sizes=true,
+            allow_empty_routes=true
+        )
+        population = generate(gen; pop_size=20, rng=StableRNG(2026))
+
+        has_empty_route = any(any(==(0), _route_lengths(ind)) for ind in population)
+        @test has_empty_route
+    end
+
+    @testset "min_active_routes is enforced by generators" begin
+        rgen = RandomGenerator(num_jobs=12, num_routes=8, min_active_routes=6)
+        rpop = generate(rgen; pop_size=30, rng=StableRNG(7))
+        @test all(_active_routes(ind) >= 6 for ind in rpop)
+
+        instance_path = normpath(joinpath(@__DIR__, "..", "train", "train_1.json"))
+        sgen = SweepTWGenerator(
+            instance_path;
+            num_routes=12,
+            min_active_routes=9,
+            allow_empty_routes=true
+        )
+        spop = generate(sgen; pop_size=30, rng=StableRNG(8))
+        @test all(_active_routes(ind) >= 9 for ind in spop)
+    end
+
+    @testset "enforce_min_active_routes repairs underfilled chromosomes" begin
+        raw = [1, 2, 3, 4, -1, -1, -1]
+        repaired = enforce_min_active_routes(raw, 3)
+
+        @test _active_routes(repaired) == 3
+        @test count(==(-1), repaired) == count(==(-1), raw)
+        @test sort(filter(!=(-1), repaired)) == sort(filter(!=(-1), raw))
     end
 end
