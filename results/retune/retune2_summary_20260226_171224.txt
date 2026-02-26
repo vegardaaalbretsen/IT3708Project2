@@ -1,0 +1,45 @@
+Retune2 Summary
+Generated: 2026-02-26 18:32:49
+
+Stage A Top
+#1 score=2045.73 mean_gap=45.73% med=40.75% worst=102.34% feasible=8/10 | pc=0.82 pm=0.12 pls=0.30 k=3 o1x=0.22 e=6 | mode=dynamic slack=4 cap=16 min=one | w=(20.0,10.0,18.0) s=(1.0,8.0,1.0,0.04)
+#2 score=3047.05 mean_gap=47.05% med=42.94% worst=79.64% feasible=7/10 | pc=0.82 pm=0.08 pls=0.15 k=2 o1x=0.30 e=10 | mode=dynamic slack=4 cap=12 min=lb | w=(8.0,10.0,18.0) s=(1.0,6.0,1.2,0.03)
+#3 score=3050.95 mean_gap=50.95% med=44.26% worst=113.77% feasible=7/10 | pc=0.88 pm=0.08 pls=0.15 k=3 o1x=0.22 e=6 | mode=dynamic slack=4 cap=14 min=lb | w=(8.0,6.0,40.0) s=(0.5,4.0,1.4,0.02)
+#4 score=3052.91 mean_gap=52.91% med=48.17% worst=98.80% feasible=7/10 | pc=0.85 pm=0.10 pls=0.15 k=3 o1x=0.15 e=10 | mode=dynamic slack=2 cap=14 min=lb | w=(8.0,6.0,18.0) s=(0.5,4.0,1.4,0.02)
+#5 score=3057.50 mean_gap=57.50% med=47.64% worst=169.39% feasible=7/10 | pc=0.88 pm=0.12 pls=0.22 k=2 o1x=0.15 e=10 | mode=dynamic slack=3 cap=14 min=one | w=(8.0,10.0,18.0) s=(1.0,6.0,1.2,0.03)
+#6 score=4051.39 mean_gap=51.39% med=54.75% worst=87.39% feasible=6/10 | pc=0.88 pm=0.16 pls=0.30 k=2 o1x=0.22 e=10 | mode=dynamic slack=3 cap=14 min=one | w=(8.0,6.0,28.0) s=(0.5,4.0,1.4,0.02)
+#7 score=4053.74 mean_gap=53.74% med=48.86% worst=90.59% feasible=6/10 | pc=0.82 pm=0.08 pls=0.22 k=3 o1x=0.30 e=10 | mode=dynamic slack=3 cap=12 min=lb | w=(8.0,6.0,40.0) s=(1.0,8.0,1.0,0.04)
+#8 score=4055.72 mean_gap=55.72% med=44.54% worst=113.27% feasible=6/10 | pc=0.94 pm=0.12 pls=0.30 k=2 o1x=0.15 e=6 | mode=dynamic slack=3 cap=12 min=lb | w=(8.0,14.0,18.0) s=(0.5,4.0,1.4,0.02)
+#9 score=4060.61 mean_gap=60.61% med=58.04% worst=103.74% feasible=6/10 | pc=0.82 pm=0.12 pls=0.22 k=2 o1x=0.15 e=6 | mode=dynamic slack=2 cap=16 min=lb | w=(14.0,14.0,28.0) s=(1.0,8.0,1.0,0.04)
+#10 score=5067.96 mean_gap=67.96% med=64.92% worst=128.69% feasible=5/10 | pc=0.88 pm=0.16 pls=0.15 k=3 o1x=0.22 e=6 | mode=dynamic slack=1 cap=14 min=one | w=(8.0,14.0,18.0) s=(0.5,4.0,1.4,0.02)
+
+Stage B Top
+#1 score=1031.30 mean_gap=31.30% med=30.03% worst=51.22% feasible=9/10 | pc=0.82 pm=0.12 pls=0.30 k=3 o1x=0.22 e=6 | mode=dynamic slack=4 cap=16 min=one | w=(20.0,10.0,18.0) s=(1.0,8.0,1.0,0.04)
+#2 score=1038.30 mean_gap=38.30% med=34.03% worst=90.47% feasible=9/10 | pc=0.88 pm=0.08 pls=0.15 k=3 o1x=0.22 e=6 | mode=dynamic slack=4 cap=14 min=lb | w=(8.0,6.0,40.0) s=(0.5,4.0,1.4,0.02)
+#3 score=2036.99 mean_gap=36.99% med=32.78% worst=72.94% feasible=8/10 | pc=0.82 pm=0.08 pls=0.15 k=2 o1x=0.30 e=10 | mode=dynamic slack=4 cap=12 min=lb | w=(8.0,10.0,18.0) s=(1.0,6.0,1.2,0.03)
+#4 score=2040.87 mean_gap=40.87% med=42.76% worst=62.12% feasible=8/10 | pc=0.85 pm=0.10 pls=0.15 k=3 o1x=0.15 e=10 | mode=dynamic slack=2 cap=14 min=lb | w=(8.0,6.0,18.0) s=(0.5,4.0,1.4,0.02)
+
+Final comparison (all instances, pop=250, gen=1200):
+Current baseline:
+  pc=0.85 pm=0.10 pls=0.15 k=3 o1x=0.15 e=10 | mode=static maxn=8 | w=(8.0,6.0,18.0) s=(0.5,4.0,1.4,0.02)
+  mean_gap=33.64% median_gap=20.74% worst_gap=111.00% feasible=7/10
+
+Dynamic baseline:
+  pc=0.85 pm=0.10 pls=0.15 k=3 o1x=0.15 e=10 | mode=dynamic slack=2 cap=14 min=lb | w=(8.0,6.0,18.0) s=(0.5,4.0,1.4,0.02)
+  mean_gap=40.42% median_gap=37.36% worst_gap=66.21% feasible=7/10
+
+Best tuned:
+  pc=0.82 pm=0.12 pls=0.30 k=3 o1x=0.22 e=6 | mode=dynamic slack=4 cap=16 min=one | w=(20.0,10.0,18.0) s=(1.0,8.0,1.0,0.04)
+  mean_gap=29.92% median_gap=26.44% worst_gap=55.57% feasible=10/10
+
+Per-instance comparison (current -> dynamic -> tuned):
+train_0.json | gap 111.00% -> 55.28% -> 55.57% | travel 1745.58 -> 1284.59 -> 1287.06 | feasible false -> true -> true
+train_1.json | gap 63.71% -> 66.21% -> 40.54% | travel 964.41 -> 979.15 -> 827.90 | feasible true -> true -> true
+train_2.json | gap 14.95% -> 29.07% -> 20.90% | travel 1446.07 -> 1623.69 -> 1520.94 | feasible false -> false -> true
+train_3.json | gap 19.13% -> 20.61% -> 25.00% | travel 1348.90 -> 1365.62 -> 1415.35 | feasible false -> false -> true
+train_4.json | gap 17.13% -> 58.12% -> 21.10% | travel 1477.94 -> 1995.14 -> 1528.10 | feasible true -> false -> true
+train_5.json | gap 20.59% -> 40.58% -> 24.56% | travel 1317.23 -> 1535.56 -> 1360.53 | feasible true -> true -> true
+train_6.json | gap 20.82% -> 35.86% -> 33.72% | travel 1116.05 -> 1254.92 -> 1235.20 | feasible true -> true -> true
+train_7.json | gap 25.02% -> 32.49% -> 27.88% | travel 1088.70 -> 1153.75 -> 1113.54 | feasible true -> true -> true
+train_8.json | gap 23.45% -> 38.86% -> 31.64% | travel 902.77 -> 1015.49 -> 962.67 | feasible true -> true -> true
+train_9.json | gap 20.65% -> 27.08% -> 18.25% | travel 1031.29 -> 1086.27 -> 1010.84 | feasible true -> true -> true

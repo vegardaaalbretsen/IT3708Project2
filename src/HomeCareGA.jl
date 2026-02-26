@@ -243,7 +243,7 @@ function run(
             @info "GA generation" generation=generation generation_best=generation_best_fit best_overall=best_fitness
         end
 
-        parents, _ = select(ga_config.selector, population, population_fitness)
+        parents, _ = select(ga_config.selector, population, population_fitness; rng=rng)
         children = _make_children(parents, ga_config, rng)
 
         if !isnothing(ga_config.local_search) && ga_config.p_ls > 0.0

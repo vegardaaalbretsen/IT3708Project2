@@ -235,21 +235,24 @@ function fitness_breakdown(chrom::Vector{Int},
         st = inst.start_time[pid]
         en = inst.end_time[pid]
 
-        # wait if early
+        # Wait if early. Time-window feasibility is based on care completion:
+        # service must finish before patient end_time.
         if cur_time < st
             wt = st - cur_time
             wait += wt
             cur_time = st
-            # if you want to treat early as violation, accumulate:
+            # Optional early penalty channel (typically disabled by weight).
             early += wt
-        elseif cur_time > en
-            late += (cur_time - en)
         end
 
-        # care
+        # Care starts at current time and must be completed within the time window.
         ct = inst.care_time[pid]
         care += ct
-        cur_time += ct
+        finish_time = cur_time + ct
+        if finish_time > en
+            late += (finish_time - en)
+        end
+        cur_time = finish_time
 
         # capacity
         cur_load += inst.demand[pid]

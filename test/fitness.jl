@@ -64,10 +64,11 @@ using HomeCareGA
         @test b.return_overtime > 0.0
     end
 
-    @testset "Late arrival is penalized" begin
-        # Set a tight time window for patient 2
-        inst3 = HCInstance(inst; start_time=[0.0, 0.0, 0.0], end_time=[100.0, 1.0, 100.0])
-        chrom = [1,2]  # travel to 1 (5) + care(10) then to 2 (1) => arrive 16 > 1 => late
+    @testset "Late completion is penalized (finish_time > end_time)" begin
+        # Patient 1 is reached at time 5 (not late on arrival), but care finishes at 15.
+        # With end_time=12 this must be penalized.
+        inst3 = HCInstance(inst; start_time=[0.0, 0.0, 0.0], end_time=[12.0, 100.0, 100.0])
+        chrom = [1]
         b = fitness_breakdown(chrom, inst3; weights=weights, schedule=schedule_lo)
         @test b.late > 0.0
     end

@@ -1,4 +1,5 @@
 using StatsBase: sample, Weights
+using Random: AbstractRNG
 """
 Parent selection:
     Tournament
@@ -35,7 +36,8 @@ Tournament selection (minimizing).
 function select(
         method::TournamentSelector,
         population::Vector{Vector{Int}},
-        fitnesses::Vector{Float64}
+        fitnesses::Vector{Float64};
+        rng::AbstractRNG = Random.GLOBAL_RNG
 )::Tuple{Vector{Vector{Int}}, Vector{Float64}}
     
     pop_size = length(population)
@@ -47,7 +49,7 @@ function select(
     
     for i in 1:pop_size
         # Randomly pick k indices of individuals
-        tournament_indices = sample(1:pop_size, method.k, replace=false)
+        tournament_indices = sample(rng, 1:pop_size, method.k, replace=false)
         
         # Get index of the tournament winner (min fitness)
         winner_idx = tournament_indices[argmin(fitnesses[tournament_indices])]
@@ -65,7 +67,8 @@ Roulette wheel selection (minimizing).
 function select(
         method::RouletteWheelSelector,
         parents::Vector{Vector{Int}},
-        fitnesses::Vector{Float64}
+        fitnesses::Vector{Float64};
+        rng::AbstractRNG = Random.GLOBAL_RNG
 )::Tuple{Vector{Vector{Int}}, Vector{Float64}}
     max_fit = maximum(fitnesses)
     min_fit = minimum(fitnesses)
@@ -78,7 +81,7 @@ function select(
     probabilities = Weights(offset_fitnesses)
 
     idx_pool = 1:length(parents)
-    selected_indices = sample(idx_pool, probabilities, length(parents))
+    selected_indices = sample(rng, idx_pool, probabilities, length(parents))
     
     return parents[selected_indices], fitnesses[selected_indices]
 end

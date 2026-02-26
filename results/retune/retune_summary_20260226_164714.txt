@@ -1,0 +1,41 @@
+Retune Summary
+Generated: 2026-02-26 17:10:02
+
+Stage 1 Top (coarse)
+#1 score=543.49 mean_gap=43.49% med=43.49% worst=60.76% feasible=3/4 | pc=0.80 pm=0.14 pls=0.25 k=2 o1x=0.22 elites=6 maxn=10
+#2 score=547.72 mean_gap=47.72% med=48.15% worst=73.30% feasible=3/4 | pc=0.95 pm=0.06 pls=0.10 k=2 o1x=0.22 elites=14 maxn=9
+#3 score=552.44 mean_gap=52.44% med=47.46% worst=88.61% feasible=3/4 | pc=0.90 pm=0.10 pls=0.25 k=2 o1x=0.30 elites=6 maxn=10
+#4 score=552.68 mean_gap=52.68% med=51.72% worst=81.10% feasible=3/4 | pc=0.90 pm=0.06 pls=0.25 k=2 o1x=0.15 elites=14 maxn=9
+#5 score=553.24 mean_gap=53.24% med=47.49% worst=88.28% feasible=3/4 | pc=0.85 pm=0.10 pls=0.15 k=3 o1x=0.15 elites=10 maxn=8
+#6 score=553.42 mean_gap=53.42% med=42.15% worst=94.15% feasible=3/4 | pc=0.85 pm=0.18 pls=0.10 k=4 o1x=0.30 elites=10 maxn=7
+#7 score=553.61 mean_gap=53.61% med=47.07% worst=87.95% feasible=3/4 | pc=0.85 pm=0.18 pls=0.25 k=2 o1x=0.22 elites=10 maxn=7
+#8 score=558.60 mean_gap=58.60% med=49.99% worst=105.92% feasible=3/4 | pc=0.90 pm=0.10 pls=0.25 k=3 o1x=0.22 elites=10 maxn=8
+#9 score=559.31 mean_gap=59.31% med=47.32% worst=108.24% feasible=3/4 | pc=0.90 pm=0.14 pls=0.10 k=3 o1x=0.22 elites=6 maxn=7
+#10 score=560.18 mean_gap=60.18% med=45.56% worst=116.79% feasible=3/4 | pc=0.80 pm=0.18 pls=0.10 k=3 o1x=0.30 elites=6 maxn=7
+
+Stage 2 Top (all instances)
+#1 score=1537.54 mean_gap=37.54% med=28.96% worst=80.09% feasible=7/10 | pc=0.90 pm=0.10 pls=0.25 k=2 o1x=0.30 elites=6 maxn=10
+#2 score=1539.37 mean_gap=39.37% med=27.19% worst=127.61% feasible=7/10 | pc=0.85 pm=0.10 pls=0.15 k=3 o1x=0.15 elites=10 maxn=8
+#3 score=1542.50 mean_gap=42.50% med=29.34% worst=130.92% feasible=7/10 | pc=0.90 pm=0.06 pls=0.25 k=2 o1x=0.15 elites=14 maxn=9
+#4 score=1543.47 mean_gap=43.47% med=32.37% worst=133.46% feasible=7/10 | pc=0.80 pm=0.14 pls=0.25 k=2 o1x=0.22 elites=6 maxn=10
+#5 score=1545.46 mean_gap=45.46% med=32.87% worst=138.85% feasible=7/10 | pc=0.95 pm=0.06 pls=0.10 k=2 o1x=0.22 elites=14 maxn=9
+
+Baseline config:
+  pc=0.85 pm=0.10 pls=0.15 k=3 o1x=0.15 elites=10 maxn=8
+  mean_gap=33.64% median_gap=20.74% worst_gap=111.00% feasible=7/10
+
+Best tuned config:
+  pc=0.90 pm=0.10 pls=0.25 k=2 o1x=0.30 elites=6 maxn=10
+  mean_gap=42.55% median_gap=27.92% worst_gap=148.80% feasible=7/10
+
+Per-instance comparison (baseline -> tuned):
+train_0.json | gap 111.00% -> 148.80% | travel 1745.58 -> 2058.32 | feasible false -> false
+train_1.json | gap 63.71% -> 61.16% | travel 964.41 -> 949.42 | feasible true -> true
+train_2.json | gap 14.95% -> 26.81% | travel 1446.07 -> 1595.28 | feasible false -> false
+train_3.json | gap 19.13% -> 32.84% | travel 1348.90 -> 1504.11 | feasible false -> false
+train_4.json | gap 17.13% -> 21.03% | travel 1477.94 -> 1527.15 | feasible true -> true
+train_5.json | gap 20.59% -> 22.40% | travel 1317.23 -> 1337.03 | feasible true -> true
+train_6.json | gap 20.82% -> 28.94% | travel 1116.05 -> 1191.03 | feasible true -> true
+train_7.json | gap 25.02% -> 27.83% | travel 1088.70 -> 1113.12 | feasible true -> true
+train_8.json | gap 23.45% -> 27.70% | travel 902.77 -> 933.84 | feasible true -> true
+train_9.json | gap 20.65% -> 28.01% | travel 1031.29 -> 1094.24 | feasible true -> true

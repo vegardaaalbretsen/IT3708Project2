@@ -29,7 +29,7 @@ const MAX_GENERATIONS = 5000
 
 const P_C = 0.85
 const P_M = 0.10
-const P_LS = 0.15
+const P_LS = 0.02
 const PARENT_SELECTION = :tournament              # :tournament or :roulette
 const TOURNAMENT_K = 3                            # Used only if PARENT_SELECTION = :tournament
 const NUM_ELITES = 10

@@ -52,12 +52,63 @@ function _route_ranges(individual::Vector{Int})
     return ranges
 end
 
+@inline function _relocate_move(individual::Vector{Int}, from_idx::Int, to_idx::Int)::Vector{Int}
+    candidate = copy(individual)
+    gene = candidate[from_idx]
+    deleteat!(candidate, from_idx)
+    insert_idx = to_idx > from_idx ? to_idx - 1 : to_idx
+    insert!(candidate, insert_idx, gene)
+    return candidate
+end
+
+function _inter_route_relocate_first_improvement(
+    current::Vector{Int},
+    current_fit::Float64,
+    instance::Fitness.HCInstance,
+    ga_config,
+    generation::Int,
+    max_generations::Int
+)::Tuple{Vector{Int}, Float64, Bool}
+    routes = _route_ranges(current)
+    num_active_routes = length(routes)
+    num_active_routes <= 1 && return current, current_fit, false
+
+    @inbounds for src_route_idx in 1:num_active_routes
+        src_start, src_end = routes[src_route_idx]
+        src_len = src_end - src_start + 1
+
+        # Do not collapse below configured minimum number of active routes.
+        if src_len == 1 && num_active_routes <= ga_config.min_active_routes
+            continue
+        end
+
+        for from_idx in src_start:src_end
+            for dst_route_idx in 1:num_active_routes
+                dst_route_idx == src_route_idx && continue
+                dst_start, dst_end = routes[dst_route_idx]
+
+                # Lightweight candidate set: route start and route end.
+                for to_idx in (dst_start, dst_end + 1)
+                    candidate = _relocate_move(current, from_idx, to_idx)
+                    cand_fit = _full_fitness(candidate, instance, ga_config, generation, max_generations)
+                    if cand_fit < current_fit - 1e-9
+                        return candidate, cand_fit, true
+                    end
+                end
+            end
+        end
+    end
+
+    return current, current_fit, false
+end
+
 """
     improve(::TwoOptLocalSearch, individual, instance, ga_config, generation, max_generations)
 
 Run a lightweight 2-opt local-search pass:
 - Operates route-by-route (between `-1` separators)
 - One first-improvement pass per route
+- One lightweight inter-route relocate first-improvement pass
 - Uses full penalized GA fitness as objective
 """
 function improve(::TwoOptLocalSearch,
@@ -92,6 +143,10 @@ function improve(::TwoOptLocalSearch,
             improved && break
         end
     end
+
+    current, current_fit, _ = _inter_route_relocate_first_improvement(
+        current, current_fit, instance, ga_config, generation, max_generations
+    )
 
     return current
 end

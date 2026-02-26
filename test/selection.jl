@@ -27,6 +27,16 @@ using HomeCareGA  # assumes you expose/select these; otherwise prefix with HomeC
         @test all(w -> w in pop, winners)
     end
 
+    @testset "TournamentSelector deterministic with explicit RNG" begin
+        sel = TournamentSelector(3)
+        r1 = StableRNG(42)
+        r2 = StableRNG(42)
+        w1, f1 = select(sel, pop, fit; rng=r1)
+        w2, f2 = select(sel, pop, fit; rng=r2)
+        @test w1 == w2
+        @test f1 == f2
+    end
+
     @testset "RouletteWheelSelector basics" begin
         sel = RouletteWheelSelector()
         winners, wfit = select(sel, pop, fit)
@@ -35,6 +45,16 @@ using HomeCareGA  # assumes you expose/select these; otherwise prefix with HomeC
         @test length(wfit) == μ
         @test all(f -> f in fit, wfit)
         @test all(w -> w in pop, winners)
+    end
+
+    @testset "RouletteWheelSelector deterministic with explicit RNG" begin
+        sel = RouletteWheelSelector()
+        r1 = StableRNG(777)
+        r2 = StableRNG(777)
+        w1, f1 = select(sel, pop, fit; rng=r1)
+        w2, f2 = select(sel, pop, fit; rng=r2)
+        @test w1 == w2
+        @test f1 == f2
     end
 
     @testset "ElitistSelector keeps best parents and best children" begin
