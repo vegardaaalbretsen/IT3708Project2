@@ -22,17 +22,21 @@ const SHOW_PLOTS = false                             # Set true for interactive 
 const FITNESS_YMAX = 2500.0                          # Set to `nothing` to disable max-cap on fitness axis
 
 const RNG_SEED = 42
-const MAX_NURSES = 8                               # `nothing` => use `nbr_nurses` from instance JSON (upper bound)
+const MAX_NURSES = nothing                               # `nothing` => use `nbr_nurses` from instance JSON (upper bound)
 const MIN_NURSES = nothing                         # `nothing` => derive lower bound from instance data
 const POP_SIZE = 250
-const MAX_GENERATIONS = 5000
+const MAX_GENERATIONS = 20_000
+const NO_IMPROVEMENT_PATIENCE = 2500           # Set Int (e.g. 500) to stop after N generations without best-fitness improvement
+
 
 const P_C = 0.85
 const P_M = 0.10
-const P_LS = 0.15
+const P_LS = 0.0
 const PARENT_SELECTION = :tournament              # :tournament or :roulette
 const TOURNAMENT_K = 3                            # Used only if PARENT_SELECTION = :tournament
-const NUM_ELITES = 10
+const SURVIVOR_SELECTION = :generalized_crowding  # :elitist or :generalized_crowding
+const NUM_ELITES = 10                             # Used only if SURVIVOR_SELECTION = :elitist
+const GC_PHI = 1.0                                # Used only if SURVIVOR_SELECTION = :generalized_crowding
 const MUTATOR = :swap_any                         # :swap_any lets GA move -1 separators and change how many nurses are active
 const GENERATOR = :sweep_tw                       # :random or :sweep_tw
 const SWEEP_ALLOW_EMPTY_ROUTES = true             # When true, sweep init can leave some route slots empty (< MAX_NURSES active routes)
@@ -104,6 +108,16 @@ function _build_mutator()
     end
 end
 
+function _build_survivor()
+    if SURVIVOR_SELECTION == :elitist
+        return ElitistSelector(num_elites=NUM_ELITES)
+    elseif SURVIVOR_SELECTION == :generalized_crowding
+        return GeneralizedCrowdingSelector(phi=GC_PHI)
+    else
+        error("SURVIVOR_SELECTION must be :elitist or :generalized_crowding.")
+    end
+end
+
 function _build_generator(
     instance::HCInstance,
     instance_path::AbstractString,
@@ -164,7 +178,13 @@ function _validate()
     end
     POP_SIZE > 0 || error("POP_SIZE must be > 0.")
     MAX_GENERATIONS > 0 || error("MAX_GENERATIONS must be > 0.")
+    (SURVIVOR_SELECTION == :elitist || SURVIVOR_SELECTION == :generalized_crowding) ||
+        error("SURVIVOR_SELECTION must be :elitist or :generalized_crowding.")
     NUM_ELITES >= 0 || error("NUM_ELITES must be >= 0.")
+    GC_PHI >= 0.0 || error("GC_PHI must be >= 0.0.")
+    if !isnothing(NO_IMPROVEMENT_PATIENCE)
+        NO_IMPROVEMENT_PATIENCE > 0 || error("NO_IMPROVEMENT_PATIENCE must be > 0 when set.")
+    end
     0.0 <= P_C <= 1.0 || error("P_C must be in [0, 1].")
     0.0 <= P_M <= 1.0 || error("P_M must be in [0, 1].")
     0.0 <= P_LS <= 1.0 || error("P_LS must be in [0, 1].")
@@ -208,7 +228,7 @@ function main()
         crossover = O1XCrossover(min_frac=O1X_MIN_FRAC, max_frac=O1X_MAX_FRAC),
         mutator = _build_mutator(),
         local_search = USE_LOCAL_SEARCH ? TwoOptLocalSearch() : nothing,
-        survivor = ElitistSelector(num_elites=NUM_ELITES),
+        survivor = _build_survivor(),
         generator = _build_generator(instance, instance_path, max_nurses, min_nurses),
         pop_size = POP_SIZE,
         max_generations = MAX_GENERATIONS,
@@ -218,6 +238,7 @@ function main()
         keep_history = KEEP_HISTORY,
         verbose = VERBOSE,
         log_every = LOG_EVERY,
+        no_improvement_patience = NO_IMPROVEMENT_PATIENCE,
         solution_output_file = output_path,
         instance_json_file = instance_path,
     )
@@ -254,11 +275,24 @@ function main()
     println("  Instance:        ", instance_path)
     println("  Best fitness:    ", result.best_fitness)
     println("  Best generation: ", result.best_generation, "/", MAX_GENERATIONS)
+    if KEEP_HISTORY
+        println("  Generations run: ", length(result.history), "/", MAX_GENERATIONS)
+    end
     println("  Best individual: ", result.best_individual)
     println("  Min nurses:      ", min_nurses)
     println("  Max nurses:      ", max_nurses)
     println("  Mutator:         ", MUTATOR)
     println("  Generator:       ", GENERATOR)
+    if SURVIVOR_SELECTION == :elitist
+        println("  Survivor:        elitist (num_elites=", NUM_ELITES, ")")
+    else
+        println("  Survivor:        generalized_crowding (phi=", GC_PHI, ")")
+    end
+    if isnothing(NO_IMPROVEMENT_PATIENCE)
+        println("  Early stop:      disabled")
+    else
+        println("  Early stop:      no improvement patience=", NO_IMPROVEMENT_PATIENCE)
+    end
     println("  Local search:    ", USE_LOCAL_SEARCH ? "2-opt (p_ls=$(P_LS))" : "disabled")
     if !isnothing(output_path)
         println("  Solution file:   ", output_path)
