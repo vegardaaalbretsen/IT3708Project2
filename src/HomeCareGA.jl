@@ -30,7 +30,8 @@ export O1XCrossover, crossover # Add more crossovers
 export RandomGenerator, SweepTWGenerator, generate, canonicalize_chromosome,
        active_route_count, enforce_min_active_routes # Generators / chromosome utils
 export LocalSearch, TwoOptLocalSearch, improve # Local search
-export TournamentSelector, RouletteWheelSelector, ElitistSelector, select # Add more selectors
+export TournamentSelector, RouletteWheelSelector, ElitistSelector,
+       GeneralizedCrowdingSelector, select # Add more selectors
 using .Fitness
 
 export HCInstance, FitnessWeights, PenaltySchedule, FitnessBreakdown,
@@ -54,6 +55,14 @@ function _validate_run_config(ga_config::GAConfig, max_generations::Int)
     ga_config.min_active_routes > 0 || throw(ArgumentError("ga_config.min_active_routes must be > 0."))
     max_generations > 0 || throw(ArgumentError("max_generations must be > 0."))
     ga_config.log_every >= 0 || throw(ArgumentError("ga_config.log_every must be >= 0."))
+    if !isnothing(ga_config.no_improvement_patience)
+        ga_config.no_improvement_patience > 0 || throw(ArgumentError(
+            "ga_config.no_improvement_patience must be > 0 when set."
+        ))
+    end
+    if ga_config.survivor isa GeneralizedCrowdingSelector
+        ga_config.survivor.phi >= 0.0 || throw(ArgumentError("GeneralizedCrowdingSelector.phi must be >= 0.0."))
+    end
     return nothing
 end
 
@@ -210,10 +219,13 @@ function run(
     best_individual = copy(population[1])
     best_fitness = Inf
     best_generation = 1
+    generations_without_improvement = 0
+    generations_ran = 0
 
     population_fitness = Float64[]
 
     for generation in 1:max_generations
+        generations_ran = generation
         population_fitness = _evaluate_population(
             population,
             instance,
@@ -229,6 +241,9 @@ function run(
             best_fitness = generation_best_fit
             best_individual = copy(population[generation_best_idx])
             best_generation = generation
+            generations_without_improvement = 0
+        else
+            generations_without_improvement += 1
         end
 
         if ga_config.keep_history
@@ -243,7 +258,15 @@ function run(
             @info "GA generation" generation=generation generation_best=generation_best_fit best_overall=best_fitness
         end
 
-        parents, _ = select(ga_config.selector, population, population_fitness)
+        if !isnothing(ga_config.no_improvement_patience) &&
+           generations_without_improvement >= ga_config.no_improvement_patience
+            if ga_config.verbose
+                @info "Early stopping (no improvement)" generation=generation patience=ga_config.no_improvement_patience
+            end
+            break
+        end
+
+        parents, parent_fitness = select(ga_config.selector, population, population_fitness)
         children = _make_children(parents, ga_config, rng)
 
         if !isnothing(ga_config.local_search) && ga_config.p_ls > 0.0
@@ -269,13 +292,30 @@ function run(
             max_generations
         )
 
-        population, population_fitness = select(
-            ga_config.survivor,
-            population,
-            population_fitness,
-            children,
-            child_fitness
-        )
+        if ga_config.survivor isa GeneralizedCrowdingSelector
+            population, population_fitness = select(
+                ga_config.survivor,
+                parents,
+                parent_fitness,
+                children,
+                child_fitness,
+                rng
+            )
+        else
+            population, population_fitness = select(
+                ga_config.survivor,
+                population,
+                population_fitness,
+                children,
+                child_fitness,
+                rng
+            )
+        end
+    end
+
+    if ga_config.keep_history
+        resize!(history, generations_ran)
+        resize!(entropy_history, generations_ran)
     end
 
     _maybe_log_solution(best_individual, best_fitness, ga_config, instance_json_file)

@@ -81,4 +81,62 @@ using HomeCareGA  # assumes you expose/select these; otherwise prefix with HomeC
         @test nextpop == pop[sortperm(fit)]  # all parents kept, ordered by fitness
         @test nextfit == fit[sortperm(fit)]
     end
+
+    @testset "GeneralizedCrowdingSelector phi=0 is deterministic with similarity pairing" begin
+        gc_pop = Vector{Vector{Int}}([
+            [1,2,3,-1,4,5],    # p1
+            [6,5,4,-1,3,2],    # p2
+            [1,3,2,-1,4,5],    # p3
+            [6,4,5,-1,2,3],    # p4
+        ])
+        gc_fit = Float64[10.0, 20.0, 30.0, 40.0]
+
+        # c1 is closer to p2, c2 is closer to p1 -> requires cross pairing for first family.
+        gc_children = Vector{Vector{Int}}([
+            [6,5,4,-1,2,3],    # c1 (better than p2, worse than p1)
+            [1,2,3,-1,5,4],    # c2 (better than p1)
+            [1,3,2,-1,5,4],    # c3 (better than p3)
+            [6,4,5,-1,3,2],    # c4 (better than p4)
+        ])
+        gc_child_fit = Float64[15.0, 5.0, 25.0, 35.0]
+
+        surv = GeneralizedCrowdingSelector(phi=0.0)
+        nextpop, nextfit = select(surv, gc_pop, gc_fit, gc_children, gc_child_fit, StableRNG(1))
+
+        @test nextpop == [gc_children[2], gc_children[1], gc_children[3], gc_children[4]]
+        @test nextfit == [gc_child_fit[2], gc_child_fit[1], gc_child_fit[3], gc_child_fit[4]]
+    end
+
+    @testset "GeneralizedCrowdingSelector phi=1 matches probabilistic crowding rate" begin
+        parent = [[1,2,3,-1,4]]
+        child = [[1,3,2,-1,4]]
+        parent_fit = [100.0]
+        child_fit = [50.0]
+
+        surv = GeneralizedCrowdingSelector(phi=1.0)
+        rng_rate = StableRNG(2026)
+        trials = 4000
+        child_wins = 0
+
+        for _ in 1:trials
+            nextpop, _ = select(surv, parent, parent_fit, child, child_fit, rng_rate)
+            child_wins += (nextpop[1] == child[1])
+        end
+
+        expected = parent_fit[1] / (parent_fit[1] + child_fit[1])
+        observed = child_wins / trials
+        @test abs(observed - expected) < 0.05
+    end
+
+    @testset "GeneralizedCrowdingSelector rejects phi < 0" begin
+        surv = GeneralizedCrowdingSelector(phi=-0.1)
+        @test_throws ArgumentError select(
+            surv,
+            [[1,2,3,-1,4]],
+            [10.0],
+            [[1,3,2,-1,4]],
+            [9.0],
+            StableRNG(7)
+        )
+    end
 end

@@ -25,6 +25,7 @@ Base.@kwdef struct GAConfig
     keep_history::Bool = true
     verbose::Bool = false
     log_every::Int = 25
+    no_improvement_patience::Union{Nothing, Int} = nothing
 
     # Optional solution output (uses src/algorithms/logging.jl)
     solution_output_file::Union{Nothing, String} = nothing
