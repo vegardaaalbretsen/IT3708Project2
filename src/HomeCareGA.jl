@@ -17,6 +17,7 @@ include("utils/chromosome_utils.jl")
 include("operators/generators.jl")
 include("fitness.jl")
 include("operators/local_search.jl")
+include("operators/split.jl")
 
 module Algorithms
 include("algorithms/logging.jl")
