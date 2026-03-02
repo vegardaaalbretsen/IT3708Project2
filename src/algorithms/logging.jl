@@ -2,31 +2,93 @@ using JSON3
 using HomeCareGA.Fitness: SPLIT
 
 
-# Helper function to calculate total travel time (only travel times, no wait/care)
-function calculate_route_duration(route::Vector{Int}, instance)
+@inline function _fmt_num(x::Real)::String
+    xf = Float64(x)
+    if isapprox(xf, round(xf); atol=1e-9)
+        return string(Int(round(xf)))
+    end
+    s = string(round(xf; digits=2))
+    s = replace(s, r"0+$" => "")
+    s = replace(s, r"\.$" => "")
+    return s
+end
+
+function _fmt_duration(x::Real)::String
+    v = round(Float64(x); digits=2)
+    neg = v < 0
+    av = abs(v)
+    i = floor(Int, av)
+    d = round(Int, (av - i) * 100)
+    if d == 100
+        i += 1
+        d = 0
+    end
+    s = string(i, ".", lpad(string(d), 2, '0'))
+    return neg ? "-" * s : s
+end
+
+function _parse_routes(solution::Vector{Int})::Vector{Vector{Int}}
+    routes = Vector{Int}[]
+    current_route = Int[]
+
+    for p in solution
+        if p == SPLIT
+            push!(routes, current_route)
+            current_route = Int[]
+        else
+            push!(current_route, p)
+        end
+    end
+
+    push!(routes, current_route)
+    return routes
+end
+
+function _simulate_route(route::Vector{Int}, instance)
     if isempty(route)
-        return 0.0
+        return (total_demand=0.0, route_duration=0.0, route_travel=0.0, stops=NamedTuple[])
     end
 
-    # Extract travel times matrix
     travel_times = instance["travel_times"]
+    patients = instance["patients"]
 
-    # Node indexing: 0 = depot, 1..N = patients. JSON matrix is 1-indexed arrays.
-    total_travel = 0.0
-    current_node = 0
+    cur_time = 0.0
+    cur_node = 0
+    route_travel = 0.0
+    total_demand = 0.0
+    stops = NamedTuple[]
 
-    for patient_id in route
-        # Travel from current_node to patient_id
-        travel_time = Float64(travel_times[current_node + 1][patient_id + 1])
-        total_travel += travel_time
-        current_node = patient_id
+    for pid in route
+        pdata = patients[string(pid)]
+
+        travel_t = Float64(travel_times[cur_node + 1][pid + 1])
+        arrival = cur_time + travel_t
+        route_travel += travel_t
+
+        tw_start = Float64(pdata["start_time"])
+        tw_end = Float64(pdata["end_time"])
+        care_t = Float64(pdata["care_time"])
+
+        visit_start = max(arrival, tw_start)
+        visit_end = visit_start + care_t
+
+        push!(stops, (
+            pid=pid,
+            visit_start=visit_start,
+            visit_end=visit_end,
+            tw_start=tw_start,
+            tw_end=tw_end
+        ))
+
+        cur_time = visit_end
+        cur_node = pid
+        total_demand += Float64(pdata["demand"])
     end
 
-    # Return to depot
-    return_travel = Float64(travel_times[current_node + 1][1])
-    total_travel += return_travel
-
-    return round(total_travel, digits=2)
+    back_to_depot = Float64(travel_times[cur_node + 1][1])
+    cur_time += back_to_depot
+    route_travel += back_to_depot
+    return (total_demand=total_demand, route_duration=cur_time, route_travel=route_travel, stops=stops)
 end
 
 """
@@ -41,95 +103,54 @@ Example:
 function log_solution(
     solution::Vector{Int},
     json_file::String,
-    objective_value::Float64,
+    _objective_value::Float64,
     output_file::String
 )
-    
-    # Load and parse JSON instance
     instance = JSON3.read(read(json_file, String))
-    
     instance_name = instance["instance_name"]
     nurse_capacity = instance["capacity_nurse"]
+    available_nurses = haskey(instance, :nbr_nurses) ? Int(instance["nbr_nurses"]) : (count(==(SPLIT), solution) + 1)
     depot_return_time = instance["depot"]["return_time"]
-    depot_coords = (instance["depot"]["x_coord"], instance["depot"]["y_coord"])
-    
-    # Build patient dicts: patient_id -> (x, y) and patient_id -> (start_time, end_time, care_time)
-    patients_coords = Dict{Int, Tuple{Int, Int}}()
-    patients_info = Dict{Int, Tuple{Int, Int, Int}}()  # start, end, care_time
-    
-    for (patient_id_str, patient_data) in instance["patients"]
-        patient_id = parse(Int, String(patient_id_str))
-        patients_coords[patient_id] = (patient_data["x_coord"], patient_data["y_coord"])
-        patients_info[patient_id] = (patient_data["start_time"], patient_data["end_time"], patient_data["care_time"])
-    end
-    
-    # Open file for writing
+    routes = [r for r in _parse_routes(solution) if !isempty(r)]
+    active_nurses = length(routes)
+
     open(output_file, "w") do io
-        # Header info
         println(io, "Instance: $instance_name")
-        println(io, "Nurse capacity: $nurse_capacity")
-        println(io, "Depot return time: $depot_return_time")
+        println(io, "Nurse capacity: ", _fmt_num(nurse_capacity))
+        println(io, "Available nurses: ", available_nurses)
+        println(io, "Active nurses: ", active_nurses)
+        println(io, "Depot return time: ", _fmt_num(depot_return_time))
         println(io, "-" ^ 140)
-        
-        # Parse routes from solution
-        routes = Vector{Int}[]
-        current_route = Int[]
-        
-        for p in solution
-            if p == SPLIT
-                if !isempty(current_route)
-                    push!(routes, current_route)
-                    current_route = Int[]
-                end
-            else
-                push!(current_route, p)
-            end
-        end
-        
-        if !isempty(current_route)
-            push!(routes, current_route)
-        end
-        
-        # Print each nurse route and accumulate total travel time
+
+        println(io, "Nurse           Route duration    Covered demand    Patient sequence")
+
         total_travel = 0.0
         for (nurse_idx, route) in enumerate(routes)
-            # Calculate total demand and route duration (travel-only)
-            total_demand = 0
-            route_duration = calculate_route_duration(route, instance)
-            total_travel += route_duration
+            sim = _simulate_route(route, instance)
+            total_travel += sim.route_travel
 
-            for pid in route
-                if haskey(instance["patients"], string(pid))
-                    patient = instance["patients"][string(pid)]
-                    total_demand += patient["demand"]
-                end
+            seq_parts = String["D (0)"]
+            for stop in sim.stops
+                push!(
+                    seq_parts,
+                    "$(stop.pid) (" * _fmt_num(stop.visit_start) * "-" * _fmt_num(stop.visit_end) * ")" *
+                    " [" * _fmt_num(stop.tw_start) * "-" * _fmt_num(stop.tw_end) * "]"
+                )
             end
+            push!(seq_parts, "D (" * _fmt_duration(sim.route_duration) * ")")
+            seq = join(seq_parts, " → ")
 
-            # Build route string with time windows
-            route_str = "D (0)"
-
-            for patient_id in route
-                if haskey(patients_info, patient_id)
-                    start_time, end_time, care_time = patients_info[patient_id]
-                    route_str *= " → $patient_id ($start_time-$end_time) [$start_time-$end_time]"
-                else
-                    route_str *= " → $patient_id"
-                end
-            end
-
-            route_str *= " → D ($route_duration)"
-
-            # Print nurse line
-            patient_count = length(route)
-
-            println(io, "Nurse $nurse_idx    $total_demand    $patient_count    $route_str")
-            # Print separator line only between nurse entries (not after last)
-            if nurse_idx != length(routes)
-                println(io, "    :            :          :                                :")
-            end
+            nurse_label = "Nurse $(nurse_idx) (N$(nurse_idx))"
+            println(
+                io,
+                rpad(nurse_label, 15), " ",
+                rpad(_fmt_duration(sim.route_duration), 17), " ",
+                rpad(_fmt_num(sim.total_demand), 16), " ",
+                seq
+            )
         end
-        
+
         println(io, "-" ^ 140)
-        println(io, "Objective value (total travel time): $total_travel")
+        println(io, "Objective value (total travel time): ", _fmt_duration(total_travel))
     end
 end

@@ -24,13 +24,13 @@ const FITNESS_YMAX = 2500.0                          # Set to `nothing` to disab
 const RNG_SEED = 42
 const MAX_NURSES = nothing                               # `nothing` => use `nbr_nurses` from instance JSON (upper bound)
 const MIN_NURSES = nothing                         # `nothing` => derive lower bound from instance data
-const POP_SIZE = 250
-const MAX_GENERATIONS = 20_000
-const NO_IMPROVEMENT_PATIENCE = 2500           # Set Int (e.g. 500) to stop after N generations without best-fitness improvement
+const POP_SIZE = 1000
+const MAX_GENERATIONS = 4000
+const NO_IMPROVEMENT_PATIENCE = nothing           # Set Int (e.g. 500) to stop after N generations without best-fitness improvement
 
 
 const P_C = 0.85
-const P_M = 0.10
+const P_M = 0.15
 const P_LS = 0.0
 const PARENT_SELECTION = :tournament              # :tournament or :roulette
 const TOURNAMENT_K = 3                            # Used only if PARENT_SELECTION = :tournament
@@ -85,6 +85,34 @@ function _with_prefix(path::Union{Nothing, AbstractString}, prefix::AbstractStri
     end
     full = _resolve_path(path)
     return joinpath(dirname(full), prefix * basename(full))
+end
+
+function _compact_individual(individual::Vector{Int})::Vector{Int}
+    routes = Vector{Int}[]
+    route = Int[]
+
+    @inbounds for g in individual
+        if g == SPLIT
+            if !isempty(route)
+                push!(routes, route)
+                route = Int[]
+            end
+        else
+            push!(route, g)
+        end
+    end
+    if !isempty(route)
+        push!(routes, route)
+    end
+
+    out = Int[]
+    @inbounds for i in 1:length(routes)
+        append!(out, routes[i])
+        if i < length(routes)
+            push!(out, SPLIT)
+        end
+    end
+    return out
 end
 
 function _build_selector()
@@ -278,7 +306,7 @@ function main()
     if KEEP_HISTORY
         println("  Generations run: ", length(result.history), "/", MAX_GENERATIONS)
     end
-    println("  Best individual: ", result.best_individual)
+    println("  Best individual: ", _compact_individual(result.best_individual))
     println("  Min nurses:      ", min_nurses)
     println("  Max nurses:      ", max_nurses)
     println("  Mutator:         ", MUTATOR)
@@ -294,18 +322,6 @@ function main()
         println("  Early stop:      no improvement patience=", NO_IMPROVEMENT_PATIENCE)
     end
     println("  Local search:    ", USE_LOCAL_SEARCH ? "2-opt (p_ls=$(P_LS))" : "disabled")
-    if !isnothing(output_path)
-        println("  Solution file:   ", output_path)
-    end
-    if !isnothing(routes_plot_path)
-        println("  Routes plot:     ", routes_plot_path)
-    end
-    if !isnothing(fitness_entropy_plot_path) && KEEP_HISTORY
-        println("  Fit/Entropy plot:", fitness_entropy_plot_path)
-        if !isnothing(FITNESS_YMAX)
-            println("  Plot y-cap:      fitness <= ", FITNESS_YMAX, " (auto lower bound)")
-        end
-    end
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
