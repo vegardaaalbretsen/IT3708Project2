@@ -52,6 +52,19 @@ function solution_report(inst::Instance, best::Candidate)::String
     return String(take!(io))
 end
 
+function config_report(config::GAConfig)::String
+    io = IOBuffer()
+    @printf(io, "GA Configuration:\n")
+    @printf(io, "Population size: %d\n", config.population_size)
+    @printf(io, "Generations: %d\n", config.generations)
+    @printf(io, "Tournament size: %d\n", config.tournament_size)
+    @printf(io, "Elitism: %d\n", config.elitism)
+    @printf(io, "Crossover rate: %.2f\n", config.crossover_rate)
+    @printf(io, "Mutation rate: %.2f\n", config.mutation_rate)
+    @printf(io, "Time limit (sec): %.2f\n", config.time_limit_sec)
+    return String(take!(io))
+end
+
 function terminal_summary(inst::Instance, best::Candidate)::String
     io = IOBuffer()
     used_nurses = length(best.routes)

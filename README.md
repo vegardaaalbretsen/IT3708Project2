@@ -17,7 +17,7 @@ julia --project=. run.jl --instance resources/train_0.json --time-limit 60 --pop
 Use multiple CPU threads (recommended):
 
 ```bash
-JULIA_NUM_THREADS=8 julia --project=. run.jl --instance resources/train_0.json --time-limit 60 --population 80 --generations 1000
+julia -t auto --project=. run.jl --instance resources/train_0.json --time-limit 60 --population 80 --generations 1000
 ```
 
 ## Run all training instances
