@@ -22,6 +22,12 @@ function solve_instance(
         write(io, report)
     end
 
+    cnfg_report = config_report(config)
+    cnfg_path = joinpath(instance_output_dir, "best_config.txt")
+    open(cnfg_path, "w") do io
+        write(io, cnfg_report)
+    end
+
     png_path = joinpath(instance_output_dir, "best_solution.png")
     plot_solution(inst, best, png_path)
 
