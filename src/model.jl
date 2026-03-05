@@ -79,6 +79,7 @@ struct GAConfig
     elitism::Int
     crossover_rate::Float64
     mutation_rate::Float64
+    local_search_rate::Float64
     time_limit_sec::Float64
     log_every::Int
 end
