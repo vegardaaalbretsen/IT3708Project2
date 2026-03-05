@@ -1,3 +1,30 @@
+function write_text_file(path::String, content::String)
+    open(path, "w") do io
+        write(io, content)
+    end
+end
+
+function write_metrics_csv(path::String, metrics_history)
+    if isempty(metrics_history)
+        return
+    end
+
+    open(path, "w") do io
+        write(io, "generation,best_total_travel,median_total_travel,worst_total_travel,feasible_ratio\n")
+        for m in metrics_history
+            @printf(
+                io,
+                "%d,%.6f,%.6f,%.6f,%.6f\n",
+                m.generation,
+                m.best_total_travel,
+                m.median_total_travel,
+                m.worst_total_travel,
+                m.feasible_ratio,
+            )
+        end
+    end
+end
+
 function solve_instance(
     instance_path::String;
     seed::Int = 42,
@@ -18,44 +45,17 @@ function solve_instance(
 
     report = solution_report(inst, best)
     txt_path = joinpath(instance_output_dir, "best_solution.txt")
-    open(txt_path, "w") do io
-        write(io, report)
-    end
+    write_text_file(txt_path, report)
 
     cnfg_report = config_report(config)
     cnfg_path = joinpath(instance_output_dir, "best_config.txt")
-    open(cnfg_path, "w") do io
-        write(io, cnfg_report)
-    end
+    write_text_file(cnfg_path, cnfg_report)
 
     png_path = joinpath(instance_output_dir, "best_solution.png")
     plot_solution(inst, best, png_path)
 
     metrics_path = joinpath(instance_output_dir, "metrics.csv")
-    if !isempty(metrics_history)
-        fields = propertynames(metrics_history[1])
-        open(metrics_path, "w") do io
-            write(io, join(string.(fields), ",") * "\n")
-            for m in metrics_history
-                values = String[]
-                for field in fields
-                    v = getproperty(m, field)
-                    if v isa Integer
-                        push!(values, string(v))
-                    elseif v isa AbstractFloat
-                        if isnan(v)
-                            push!(values, "NaN")
-                        else
-                            push!(values, @sprintf("%.6f", v))
-                        end
-                    else
-                        push!(values, string(v))
-                    end
-                end
-                write(io, join(values, ",") * "\n")
-            end
-        end
-    end
+    write_metrics_csv(metrics_path, metrics_history)
     spread_plot_path = joinpath(instance_output_dir, "fitness_spread.png")
     plot_fitness_spread(metrics_history, spread_plot_path; instance_name = inst.name)
 

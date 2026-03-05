@@ -22,15 +22,19 @@ function format_route_sequence(inst::Instance, route_info::RouteEval)::String
     return join(parts, " -> ")
 end
 
-function solution_report(inst::Instance, best::Candidate)::String
-    io = IOBuffer()
-    used_nurses = length(best.routes)
+function write_instance_header(io::IO, inst::Instance, used_nurses::Int)
     available_nurses = inst.nbr_nurses - used_nurses
     @printf(io, "Instance: %s\n", inst.name)
     @printf(io, "Nurse capacity: %d\n", inst.capacity_nurse)
     @printf(io, "Used nurses: %d | Available nurses: %d (of %d)\n", used_nurses, available_nurses, inst.nbr_nurses)
     @printf(io, "Capacity delta per route: + means under capacity, - means over capacity\n")
     @printf(io, "Depot return time: %.2f\n", inst.return_time)
+end
+
+function solution_report(inst::Instance, best::Candidate)::String
+    io = IOBuffer()
+    used_nurses = length(best.routes)
+    write_instance_header(io, inst, used_nurses)
     @printf(io, "--------------------------------------------------------------------------------\n")
     @printf(io, "Nurse    Route duration    Covered demand    Cap Δ(+/-)    Patient sequence\n")
     @printf(io, "--------------------------------------------------------------------------------\n")
@@ -68,12 +72,7 @@ end
 function terminal_summary(inst::Instance, best::Candidate)::String
     io = IOBuffer()
     used_nurses = length(best.routes)
-    available_nurses = inst.nbr_nurses - used_nurses
-    @printf(io, "Instance: %s\n", inst.name)
-    @printf(io, "Nurse capacity: %d\n", inst.capacity_nurse)
-    @printf(io, "Used nurses: %d | Available nurses: %d (of %d)\n", used_nurses, available_nurses, inst.nbr_nurses)
-    @printf(io, "Capacity delta per route: + means under capacity, - means over capacity\n")
-    @printf(io, "Depot return time: %.2f\n", inst.return_time)
+    write_instance_header(io, inst, used_nurses)
     @printf(io, "\n")
     return String(take!(io))
 end
