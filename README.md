@@ -32,7 +32,7 @@ Saved under `results/<instance>/`:
 
 - `best_solution.txt` (formatted solution output)
 - `best_solution.png` (plot with one color per route)
-- `metrics.csv` (behavior metrics per generation: feasibility, diversity, operator success, etc.)
+- `metrics.csv` (core metrics per generation: best/median/worst feasible travel + feasibility ratio)
 - `fitness_spread.png` (high-resolution plot of best/median/worst travel per generation)
 
 ## Code Structure

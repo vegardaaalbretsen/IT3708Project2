@@ -1,3 +1,17 @@
+# Utility for flattening patient order across a route collection.
+@inline function append_route_patients!(dest::Vector{Int}, routes::Vector{Vector{Int}})
+    for route in routes
+        append!(dest, route)
+    end
+    return dest
+end
+
+function flatten_routes(routes::Vector{Vector{Int}})
+    patients = Int[]
+    append_route_patients!(patients, routes)
+    return patients
+end
+
 """
 Construct one initial feasible candidate with a randomized greedy insertion heuristic.
 
@@ -29,9 +43,7 @@ function construct_solution(inst::Instance, rng::AbstractRNG; randomized::Bool =
             return nothing
         end
 
-        improved = true
-        while improved && !isempty(unassigned)
-            improved = false
+        while !isempty(unassigned)
             base = route_eval(inst, route).travel
             best_pid = 0
             best_pos = 1
@@ -62,7 +74,8 @@ function construct_solution(inst::Instance, rng::AbstractRNG; randomized::Bool =
             if best_pid != 0
                 insert!(route, best_pos, best_pid)
                 deleteat!(unassigned, findfirst(==(best_pid), unassigned))
-                improved = true
+            else
+                break
             end
         end
 
@@ -100,32 +113,20 @@ function crossover(inst::Instance, a::Candidate, b::Candidate, rng::AbstractRNG)
     end
 
     order = Int[]
-    for route in b.routes
-        append!(order, route)
-    end
-    for route in a.routes
-        append!(order, route)
-    end
+    append_route_patients!(order, b.routes)
+    append_route_patients!(order, a.routes)
 
     for pid in order
         if used[pid]
             continue
         end
-        if !insert_best_feasible!(inst, routes, pid, rng; stochastic = true)
-            force_insert!(inst, routes, pid, rng)
-        end
+        insert_or_force!(inst, routes, pid, rng)
         used[pid] = true
     end
 
-    missing = Int[]
     for pid in 1:n
         if !used[pid]
-            push!(missing, pid)
-        end
-    end
-    for pid in missing
-        if !insert_best_feasible!(inst, routes, pid, rng; stochastic = true)
-            force_insert!(inst, routes, pid, rng)
+            insert_or_force!(inst, routes, pid, rng)
         end
     end
 
@@ -227,10 +228,7 @@ insertion. This is pure mutation without repair or local search phases.
 """
 function mutate(inst::Instance, parent::Candidate, rng::AbstractRNG)::Candidate
     routes = deepcopy_routes(parent.routes)
-    flat = Int[]
-    for route in routes
-        append!(flat, route)
-    end
+    flat = flatten_routes(routes)
     if isempty(flat)
         return evaluate_candidate(inst, routes)
     end
@@ -249,9 +247,7 @@ function mutate(inst::Instance, parent::Candidate, rng::AbstractRNG)::Candidate
     # Reinsert them
     shuffle!(rng, removed)
     for pid in removed
-        if !insert_best_feasible!(inst, routes, pid, rng; stochastic = true)
-            force_insert!(inst, routes, pid, rng)
-        end
+        insert_or_force!(inst, routes, pid, rng)
     end
 
     return evaluate_candidate(inst, routes)
