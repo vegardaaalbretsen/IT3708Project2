@@ -1,4 +1,55 @@
 """
+Repair a potentially inconsistent/infeasible route set in-place.
+
+Workflow:
+1) Remove invalid/duplicate assignments and collect missing patients.
+2) Reinsert missing patients with feasible-first insertion, else force insertion.
+3) While infeasible routes remain, remove the most problematic visit from one bad
+   route and reinsert it elsewhere.
+4) Normalize and return repaired routes.
+"""
+function repair_routes!(
+    inst::Instance,
+    routes::Vector{Vector{Int}},
+    rng::AbstractRNG;
+    max_iter::Int = 1_000,
+)
+    missing = deduplicate_and_missing!(inst, routes)
+    shuffle!(rng, missing)
+
+    for pid in missing
+        insert_or_force!(inst, routes, pid, rng)
+    end
+
+    iter = 0
+    while iter < max_iter
+        bad_idx = first_infeasible_route_idx(inst, routes)
+        if bad_idx == 0
+            break
+        end
+
+        route = routes[bad_idx]
+        if isempty(route)
+            deleteat!(routes, bad_idx)
+            continue
+        end
+
+        # Remove the patient whose removal most improves route feasibility.
+        best_i = best_removal_idx(inst, route)
+        pid = route[best_i]
+        deleteat!(route, best_i)
+        normalize_routes!(routes)
+
+        insert_or_force!(inst, routes, pid, rng)
+
+        iter += 1
+    end
+
+    normalize_routes!(routes)
+    return routes
+end
+
+"""
 Remove the first occurrence of `pid` from the route set.
 
 Returns `true` if the patient was found and removed, otherwise `false`.
@@ -13,6 +64,31 @@ function remove_patient!(routes::Vector{Vector{Int}}, pid::Int)
     end
     return false
 end
+
+
+
+
+"""
+Insert one patient in a feasible position, or force insertion if no feasible option exists.
+
+Attempts to insert the patient at the least-cost feasible position. If no feasible
+insertion is possible, falls back to force insertion with soft penalties.
+"""
+@inline function insert_or_force!(
+    inst::Instance,
+    routes::Vector{Vector{Int}},
+    pid::Int,
+    rng::AbstractRNG,
+)
+    if !insert_best_feasible!(inst, routes, pid, rng; stochastic = true)
+        force_insert!(inst, routes, pid, rng)
+    end
+    return nothing
+end
+
+
+
+# ---------- Internal Helpers ----------
 
 """
 Insert one patient in the least-cost feasible position.
@@ -79,6 +155,7 @@ function insert_best_feasible!(
     return false
 end
 
+
 """
 Insert one patient even when no strictly feasible insertion exists.
 
@@ -122,43 +199,6 @@ function force_insert!(inst::Instance, routes::Vector{Vector{Int}}, pid::Int, rn
     insert!(routes[best_route], best_pos, pid)
 end
 
-@inline function insert_or_force!(
-    inst::Instance,
-    routes::Vector{Vector{Int}},
-    pid::Int,
-    rng::AbstractRNG,
-)
-    if !insert_best_feasible!(inst, routes, pid, rng; stochastic = true)
-        force_insert!(inst, routes, pid, rng)
-    end
-    return nothing
-end
-
-@inline function first_infeasible_route_idx(inst::Instance, routes::Vector{Vector{Int}})::Int
-    for ridx in eachindex(routes)
-        if !route_eval(inst, routes[ridx]).feasible
-            return ridx
-        end
-    end
-    return 0
-end
-
-function best_removal_idx(inst::Instance, route::Vector{Int})::Int
-    best_i = 1
-    best_score = Inf
-    for i in eachindex(route)
-        tmp = copy(route)
-        deleteat!(tmp, i)
-        r = route_eval(inst, tmp)
-        score = (10_000.0 * r.lateness) + r.travel
-        if score < best_score
-            best_score = score
-            best_i = i
-        end
-    end
-    return best_i
-end
-
 """
 Clean route assignments and report missing patients.
 
@@ -193,53 +233,28 @@ function deduplicate_and_missing!(inst::Instance, routes::Vector{Vector{Int}})
     return missing
 end
 
-"""
-Repair a potentially inconsistent/infeasible route set in-place.
 
-Workflow:
-1) Remove invalid/duplicate assignments and collect missing patients.
-2) Reinsert missing patients with feasible-first insertion, else force insertion.
-3) While infeasible routes remain, remove the most problematic visit from one bad
-   route and reinsert it elsewhere.
-4) Normalize and return repaired routes.
-"""
-function repair_routes!(
-    inst::Instance,
-    routes::Vector{Vector{Int}},
-    rng::AbstractRNG;
-    max_iter::Int = 1_000,
-)
-    missing = deduplicate_and_missing!(inst, routes)
-    shuffle!(rng, missing)
-
-    for pid in missing
-        insert_or_force!(inst, routes, pid, rng)
-    end
-
-    iter = 0
-    while iter < max_iter
-        bad_idx = first_infeasible_route_idx(inst, routes)
-        if bad_idx == 0
-            break
+@inline function first_infeasible_route_idx(inst::Instance, routes::Vector{Vector{Int}})::Int
+    for ridx in eachindex(routes)
+        if !route_eval(inst, routes[ridx]).feasible
+            return ridx
         end
-
-        route = routes[bad_idx]
-        if isempty(route)
-            deleteat!(routes, bad_idx)
-            continue
-        end
-
-        # Remove the patient whose removal most improves route feasibility.
-        best_i = best_removal_idx(inst, route)
-        pid = route[best_i]
-        deleteat!(route, best_i)
-        normalize_routes!(routes)
-
-        insert_or_force!(inst, routes, pid, rng)
-
-        iter += 1
     end
+    return 0
+end
 
-    normalize_routes!(routes)
-    return routes
+function best_removal_idx(inst::Instance, route::Vector{Int})::Int
+    best_i = 1
+    best_score = Inf
+    for i in eachindex(route)
+        tmp = copy(route)
+        deleteat!(tmp, i)
+        r = route_eval(inst, tmp)
+        score = (10_000.0 * r.lateness) + r.travel
+        if score < best_score
+            best_score = score
+            best_i = i
+        end
+    end
+    return best_i
 end
