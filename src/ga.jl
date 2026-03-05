@@ -113,11 +113,8 @@ function run_ga(inst::Instance, cfg::GAConfig, rng::AbstractRNG)
 
         # Generate offspring using deterministic per-index RNG seeds.
         if offspring_count > 0
+            offspring = Vector{Candidate}(undef, offspring_count)
             seed_base = rand(rng, UInt)
-            crossover_applied_flags = falses(offspring_count)
-            crossover_improved_flags = falses(offspring_count)
-            mutation_applied_flags = falses(offspring_count)
-            mutation_improved_flags = falses(offspring_count)
 
             # Phase 1: Generate offspring via crossover and mutation operators
             Threads.@threads for i in 1:offspring_count
@@ -135,18 +132,10 @@ function run_ga(inst::Instance, cfg::GAConfig, rng::AbstractRNG)
 
                 if rand(local_rng) < cfg.mutation_rate
                     child = mutate(inst, child, local_rng)
-                    if child.fitness + 1e-9 < fitness_before_mutation
-                        mutation_improved_flags[i] = true
-                    end
                 end
 
                 offspring[i] = child
             end
-
-            crossover_applied = count(identity, crossover_applied_flags)
-            crossover_improved = count(identity, crossover_improved_flags)
-            mutation_applied = count(identity, mutation_applied_flags)
-            mutation_improved = count(identity, mutation_improved_flags)
 
             # Phase 2: Repair all offspring and re-evaluate
             for i in 1:offspring_count
