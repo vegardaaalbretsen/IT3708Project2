@@ -52,7 +52,7 @@ struct RouteEval
 end
 
 """
-A GA individual: route encoding plus objective/constraint diagnostics.
+A GA individual: route encoding plus objective values.
 
 `fitness` is the penalized objective used by selection, while `total_travel` is the
 raw objective value for feasible comparisons.
@@ -62,11 +62,6 @@ mutable struct Candidate
     total_travel::Float64
     fitness::Float64
     feasible::Bool
-    total_lateness::Float64
-    missing_patients::Int
-    duplicate_visits::Int
-    extra_routes::Int
-    invalid_genes::Int
 end
 
 """

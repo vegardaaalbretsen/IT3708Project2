@@ -88,11 +88,6 @@ function evaluate_candidate(inst::Instance, routes::Vector{Vector{Int}})::Candid
         total_travel,
         fitness,
         feasible,
-        total_lateness,
-        missing,
-        duplicates,
-        extra_routes,
-        invalid_genes,
     )
 end
 
@@ -102,10 +97,5 @@ function copy_candidate(c::Candidate)::Candidate
         c.total_travel,
         c.fitness,
         c.feasible,
-        c.total_lateness,
-        c.missing_patients,
-        c.duplicate_visits,
-        c.extra_routes,
-        c.invalid_genes,
     )
 end

@@ -122,6 +122,43 @@ function force_insert!(inst::Instance, routes::Vector{Vector{Int}}, pid::Int, rn
     insert!(routes[best_route], best_pos, pid)
 end
 
+@inline function insert_or_force!(
+    inst::Instance,
+    routes::Vector{Vector{Int}},
+    pid::Int,
+    rng::AbstractRNG,
+)
+    if !insert_best_feasible!(inst, routes, pid, rng; stochastic = true)
+        force_insert!(inst, routes, pid, rng)
+    end
+    return nothing
+end
+
+@inline function first_infeasible_route_idx(inst::Instance, routes::Vector{Vector{Int}})::Int
+    for ridx in eachindex(routes)
+        if !route_eval(inst, routes[ridx]).feasible
+            return ridx
+        end
+    end
+    return 0
+end
+
+function best_removal_idx(inst::Instance, route::Vector{Int})::Int
+    best_i = 1
+    best_score = Inf
+    for i in eachindex(route)
+        tmp = copy(route)
+        deleteat!(tmp, i)
+        r = route_eval(inst, tmp)
+        score = (10_000.0 * r.lateness) + r.travel
+        if score < best_score
+            best_score = score
+            best_i = i
+        end
+    end
+    return best_i
+end
+
 """
 Clean route assignments and report missing patients.
 
@@ -176,20 +213,12 @@ function repair_routes!(
     shuffle!(rng, missing)
 
     for pid in missing
-        if !insert_best_feasible!(inst, routes, pid, rng; stochastic = true)
-            force_insert!(inst, routes, pid, rng)
-        end
+        insert_or_force!(inst, routes, pid, rng)
     end
 
     iter = 0
     while iter < max_iter
-        bad_idx = 0
-        for ridx in eachindex(routes)
-            if !route_eval(inst, routes[ridx]).feasible
-                bad_idx = ridx
-                break
-            end
-        end
+        bad_idx = first_infeasible_route_idx(inst, routes)
         if bad_idx == 0
             break
         end
@@ -201,26 +230,12 @@ function repair_routes!(
         end
 
         # Remove the patient whose removal most improves route feasibility.
-        best_i = 1
-        best_score = Inf
-        for i in eachindex(route)
-            tmp = copy(route)
-            deleteat!(tmp, i)
-            r = route_eval(inst, tmp)
-            score = (10_000.0 * r.lateness) + r.travel
-            if score < best_score
-                best_score = score
-                best_i = i
-            end
-        end
-
+        best_i = best_removal_idx(inst, route)
         pid = route[best_i]
         deleteat!(route, best_i)
         normalize_routes!(routes)
 
-        if !insert_best_feasible!(inst, routes, pid, rng; stochastic = true)
-            force_insert!(inst, routes, pid, rng)
-        end
+        insert_or_force!(inst, routes, pid, rng)
 
         iter += 1
     end
