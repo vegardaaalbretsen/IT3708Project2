@@ -240,7 +240,9 @@ function run_ga(inst::Instance, cfg::GAConfig, rng::AbstractRNG)
             mutation_applied_flags = falses(offspring_count)
             mutation_improved_flags = falses(offspring_count)
 
+            # Phase 1: Generate offspring via crossover and mutation operators
             Threads.@threads for i in 1:offspring_count
+                # Deterministic unique seed per thread and offspring index (avoid thread race conditions on rng and keeep reproducibility)
                 local_seed = seed_base + UInt(gen) * UInt(1_000_003) + UInt(i) * UInt(97)
                 local_rng = MersenneTwister(local_seed)
 
@@ -273,12 +275,27 @@ function run_ga(inst::Instance, cfg::GAConfig, rng::AbstractRNG)
             mutation_applied = count(identity, mutation_applied_flags)
             mutation_improved = count(identity, mutation_improved_flags)
 
+            # Phase 2: Repair all offspring and re-evaluate
+            for i in 1:offspring_count
+                repair_routes!(inst, offspring[i].routes, rng)
+                offspring[i] = evaluate_candidate(inst, offspring[i].routes)
+            end
+
+            # Phase 3: Apply local search to selected offspring
+            for i in 1:offspring_count
+                if rand(rng) < cfg.local_search_rate
+                    offspring[i] = local_search(inst, offspring[i], rng)
+                end
+            end
+
             for i in 1:offspring_count
                 next_pop[elite_count + i] = offspring[i]
             end
         end
 
         population = next_pop
+
+        # --- Collect metrics and update best solution ---
         push!(
             metrics_history,
             _generation_metrics(
@@ -299,6 +316,7 @@ function run_ga(inst::Instance, cfg::GAConfig, rng::AbstractRNG)
             best = copy_candidate(generation_best)
         end
 
+        # --- Logging and time limit check ---
         if (gen % cfg.log_every == 0) || (gen == 1)
             @printf(
                 "Gen %4d | best travel: %.2f | feasible: %s | routes: %d\n",
