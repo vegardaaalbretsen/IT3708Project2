@@ -1,3 +1,11 @@
+"""
+Construct one initial feasible candidate with a randomized greedy insertion heuristic.
+
+The method repeatedly starts a new route from an urgent patient (low time-window end),
+then inserts additional unassigned patients where feasible insertion cost is lowest.
+If route feasibility cannot be maintained within the available nurse count, `nothing`
+is returned. Final routes are repaired and evaluated before returning.
+"""
 function construct_solution(inst::Instance, rng::AbstractRNG; randomized::Bool = true)
     n = patient_count(inst)
     unassigned = collect(1:n)
@@ -66,6 +74,14 @@ function construct_solution(inst::Instance, rng::AbstractRNG; randomized::Bool =
     return candidate.feasible ? candidate : nothing
 end
 
+"""
+Combine two parent candidates into one child.
+
+The operator keeps a random subset of routes from parent `a`, then inserts remaining
+patients in a best-feasible order using both parents as insertion order hints. Missing
+or conflicting assignments are repaired, and the final child is returned as an
+evaluated `Candidate`.
+"""
 function crossover(inst::Instance, a::Candidate, b::Candidate, rng::AbstractRNG)::Candidate
     routes = Vector{Vector{Int}}()
     n = patient_count(inst)
@@ -117,6 +133,13 @@ function crossover(inst::Instance, a::Candidate, b::Candidate, rng::AbstractRNG)
     return evaluate_candidate(inst, routes)
 end
 
+"""
+Apply bounded 2-opt improvement on a single route.
+
+Tries segment reversals and keeps the best feasible travel reduction found, stopping
+after `max_checks` candidate checks. Returns the improved route (or original route
+if no improvement is found).
+"""
 function two_opt_route(inst::Instance, route::Vector{Int}; max_checks::Int = 120)
     if length(route) < 4
         return route
@@ -143,6 +166,12 @@ function two_opt_route(inst::Instance, route::Vector{Int}; max_checks::Int = 120
     return best_route
 end
 
+"""
+Try inter-route relocate moves to reduce combined travel.
+
+Randomly samples donor/receiver route pairs and moves one patient when a feasible
+relocation strictly improves the combined travel of the two routes. Operates in place.
+"""
 function try_relocate_improve!(inst::Instance, routes::Vector{Vector{Int}}, rng::AbstractRNG; attempts::Int = 40)
     if length(routes) < 2
         return
@@ -191,6 +220,13 @@ function try_relocate_improve!(inst::Instance, routes::Vector{Vector{Int}}, rng:
     end
 end
 
+"""
+Mutate a candidate by partial destroy-and-repair plus local improvement.
+
+Removes a random subset of patients, reinserts them with feasible-biased insertion,
+optionally applies 2-opt and relocate improvement, then repairs route consistency and
+returns a newly evaluated `Candidate`.
+"""
 function mutate(inst::Instance, parent::Candidate, rng::AbstractRNG)::Candidate
     routes = deepcopy_routes(parent.routes)
     flat = Int[]

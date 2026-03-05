@@ -1,3 +1,8 @@
+"""
+Remove the first occurrence of `pid` from the route set.
+
+Returns `true` if the patient was found and removed, otherwise `false`.
+"""
 function remove_patient!(routes::Vector{Vector{Int}}, pid::Int)
     for route in routes
         idx = findfirst(==(pid), route)
@@ -9,6 +14,13 @@ function remove_patient!(routes::Vector{Vector{Int}}, pid::Int)
     return false
 end
 
+"""
+Insert one patient in the least-cost feasible position.
+
+Searches all insertion positions across existing routes and optionally a new route
+if nurse capacity allows it. Uses travel increase (plus optional random tie-break)
+as score. Returns `true` if insertion succeeded.
+"""
 function insert_best_feasible!(
     inst::Instance,
     routes::Vector{Vector{Int}},
@@ -67,6 +79,13 @@ function insert_best_feasible!(
     return false
 end
 
+"""
+Insert one patient even when no strictly feasible insertion exists.
+
+Chooses the position with lowest soft-penalized score (travel delta + lateness
+penalty + noise). Falls back to opening a new route or appending to the shortest
+route when needed.
+"""
 function force_insert!(inst::Instance, routes::Vector{Vector{Int}}, pid::Int, rng::AbstractRNG)
     best_route = 0
     best_pos = 1
@@ -103,6 +122,12 @@ function force_insert!(inst::Instance, routes::Vector{Vector{Int}}, pid::Int, rn
     insert!(routes[best_route], best_pos, pid)
 end
 
+"""
+Clean route assignments and report missing patients.
+
+Removes invalid patient ids and duplicate visits in-place, then returns a vector
+of patient ids that are not assigned to any route.
+"""
 function deduplicate_and_missing!(inst::Instance, routes::Vector{Vector{Int}})
     n = patient_count(inst)
     seen = falses(n)
@@ -131,6 +156,16 @@ function deduplicate_and_missing!(inst::Instance, routes::Vector{Vector{Int}})
     return missing
 end
 
+"""
+Repair a potentially inconsistent/infeasible route set in-place.
+
+Workflow:
+1) Remove invalid/duplicate assignments and collect missing patients.
+2) Reinsert missing patients with feasible-first insertion, else force insertion.
+3) While infeasible routes remain, remove the most problematic visit from one bad
+   route and reinsert it elsewhere.
+4) Normalize and return repaired routes.
+"""
 function repair_routes!(
     inst::Instance,
     routes::Vector{Vector{Int}},
