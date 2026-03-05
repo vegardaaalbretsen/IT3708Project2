@@ -1,3 +1,6 @@
+"""
+One home-care patient with demand, time window, service time, and coordinates.
+"""
 struct Patient
     id::Int
     demand::Int
@@ -8,6 +11,9 @@ struct Patient
     y::Float64
 end
 
+"""
+Full problem instance (depot, resources, patients, and travel-time matrix).
+"""
 struct Instance
     name::String
     nbr_nurses::Int
@@ -20,6 +26,9 @@ struct Instance
     travel_times::Matrix{Float64}
 end
 
+"""
+Timing details for one patient visit inside a route simulation.
+"""
 struct VisitInfo
     patient::Int
     arrival::Float64
@@ -27,6 +36,12 @@ struct VisitInfo
     finish::Float64
 end
 
+"""
+Evaluation result for a single route.
+
+Includes feasibility, travel/duration totals, served demand, per-visit timing, and
+aggregated lateness/violation amount.
+"""
 struct RouteEval
     feasible::Bool
     travel::Float64
@@ -36,6 +51,12 @@ struct RouteEval
     lateness::Float64
 end
 
+"""
+A GA individual: route encoding plus objective/constraint diagnostics.
+
+`fitness` is the penalized objective used by selection, while `total_travel` is the
+raw objective value for feasible comparisons.
+"""
 mutable struct Candidate
     routes::Vector{Vector{Int}}
     total_travel::Float64
@@ -48,6 +69,9 @@ mutable struct Candidate
     invalid_genes::Int
 end
 
+"""
+Genetic algorithm hyperparameters and runtime controls.
+"""
 struct GAConfig
     population_size::Int
     generations::Int
