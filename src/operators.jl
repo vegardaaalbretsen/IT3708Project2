@@ -129,7 +129,6 @@ function crossover(inst::Instance, a::Candidate, b::Candidate, rng::AbstractRNG)
         end
     end
 
-    repair_routes!(inst, routes, rng)
     return evaluate_candidate(inst, routes)
 end
 
@@ -221,11 +220,10 @@ function try_relocate_improve!(inst::Instance, routes::Vector{Vector{Int}}, rng:
 end
 
 """
-Mutate a candidate by partial destroy-and-repair plus local improvement.
+Pure mutation operator: destroy-and-rebuild with 2-5 random patients.
 
-Removes a random subset of patients, reinserts them with feasible-biased insertion,
-optionally applies 2-opt and relocate improvement, then repairs route consistency and
-returns a newly evaluated `Candidate`.
+Removes a small random subset of patients and reinserts them with feasible-biased
+insertion. This is pure mutation without repair or local search phases.
 """
 function mutate(inst::Instance, parent::Candidate, rng::AbstractRNG)::Candidate
     routes = deepcopy_routes(parent.routes)
@@ -237,15 +235,18 @@ function mutate(inst::Instance, parent::Candidate, rng::AbstractRNG)::Candidate
         return evaluate_candidate(inst, routes)
     end
 
-    k = rand(rng, 2:min(10, length(flat)))
+    # Remove 2-5 random patients for mutation
+    k = rand(rng, 2:min(5, length(flat)))
     shuffle!(rng, flat)
     removed = flat[1:k]
 
+    # Remove them from routes
     for pid in removed
         remove_patient!(routes, pid)
     end
     normalize_routes!(routes)
 
+    # Reinsert them
     shuffle!(rng, removed)
     for pid in removed
         if !insert_best_feasible!(inst, routes, pid, rng; stochastic = true)
@@ -253,14 +254,32 @@ function mutate(inst::Instance, parent::Candidate, rng::AbstractRNG)::Candidate
         end
     end
 
-    if !isempty(routes) && rand(rng) < 0.6
-        idx = rand(rng, eachindex(routes))
-        routes[idx] = two_opt_route(inst, routes[idx])
-    end
-    if rand(rng) < 0.5
-        try_relocate_improve!(inst, routes, rng)
+    return evaluate_candidate(inst, routes)
+end
+
+"""
+Apply local search improvements (2-opt and relocate) to a candidate.
+
+Applies bounded 2-opt to random routes and tries inter-route relocate moves.
+This is separate from mutation and can be applied selectively to promising individuals.
+Returns a newly evaluated candidate with improved routes.
+"""
+function local_search(inst::Instance, candidate::Candidate, rng::AbstractRNG)::Candidate
+    routes = deepcopy_routes(candidate.routes)
+
+    # 2-opt on a few random routes
+    num_routes_to_improve = min(3, length(routes))
+    if num_routes_to_improve > 0
+        route_indices = collect(eachindex(routes))
+        shuffle!(rng, route_indices)
+        for i in 1:num_routes_to_improve
+            idx = route_indices[i]
+            routes[idx] = two_opt_route(inst, routes[idx]; max_checks=150)
+        end
     end
 
-    repair_routes!(inst, routes, rng)
+    # Try relocate improvements
+    try_relocate_improve!(inst, routes, rng; attempts=50)
+
     return evaluate_candidate(inst, routes)
 end
