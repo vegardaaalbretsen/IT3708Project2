@@ -1,17 +1,3 @@
-# Utility for flattening patient order across a route collection.
-@inline function append_route_patients!(dest::Vector{Int}, routes::Vector{Vector{Int}})
-    for route in routes
-        append!(dest, route)
-    end
-    return dest
-end
-
-function flatten_routes(routes::Vector{Vector{Int}})
-    patients = Int[]
-    append_route_patients!(patients, routes)
-    return patients
-end
-
 """
 Construct one initial feasible candidate with a randomized greedy insertion heuristic.
 
@@ -87,6 +73,7 @@ function construct_solution(inst::Instance, rng::AbstractRNG; randomized::Bool =
     return candidate.feasible ? candidate : nothing
 end
 
+
 """
 Combine two parent candidates into one child.
 
@@ -113,8 +100,8 @@ function crossover(inst::Instance, a::Candidate, b::Candidate, rng::AbstractRNG)
     end
 
     order = Int[]
-    append_route_patients!(order, b.routes)
-    append_route_patients!(order, a.routes)
+    _append_route_patients!(order, b.routes)
+    _append_route_patients!(order, a.routes)
 
     for pid in order
         if used[pid]
@@ -130,10 +117,77 @@ function crossover(inst::Instance, a::Candidate, b::Candidate, rng::AbstractRNG)
         end
     end
 
-    repair_routes!(inst, routes, rng)
     return evaluate_candidate(inst, routes)
 end
 
+
+"""
+Pure mutation operator: destroy-and-rebuild with 2-5 random patients.
+
+Removes a small random subset of patients and reinserts them with feasible-biased
+insertion. This is pure mutation without repair or local search phases.
+"""
+function mutate(inst::Instance, parent::Candidate, rng::AbstractRNG)::Candidate
+    routes = deepcopy_routes(parent.routes)
+    flat = _flatten_routes(routes)
+    if isempty(flat)
+        return evaluate_candidate(inst, routes)
+    end
+
+    # Remove 2-5 random patients for mutation
+    k = rand(rng, 2:min(5, length(flat)))
+    shuffle!(rng, flat)
+    removed = flat[1:k]
+
+    # Remove them from routes
+    for pid in removed
+        remove_patient!(routes, pid)
+    end
+    normalize_routes!(routes)
+
+    # Reinsert them
+    shuffle!(rng, removed)
+    for pid in removed
+        insert_or_force!(inst, routes, pid, rng)
+    end
+
+    return evaluate_candidate(inst, routes)
+end
+
+
+"""
+Apply local search improvements (2-opt and relocate) to a candidate.
+
+Applies bounded 2-opt to random routes and tries inter-route relocate moves.
+This is separate from mutation and can be applied selectively to promising individuals.
+Returns a newly evaluated candidate with improved routes.
+"""
+function local_search(inst::Instance, candidate::Candidate, rng::AbstractRNG)::Candidate
+    routes = deepcopy_routes(candidate.routes)
+
+    # 2-opt on a few random routes
+    num_routes_to_improve = min(3, length(routes))
+    if num_routes_to_improve > 0
+        route_indices = collect(eachindex(routes))
+        shuffle!(rng, route_indices)
+        for i in 1:num_routes_to_improve
+            idx = route_indices[i]
+            routes[idx] = _two_opt_route(inst, routes[idx]; max_checks=150)
+        end
+    end
+
+    # Try relocate improvements
+    _try_relocate_improve!(inst, routes, rng; attempts=50)
+
+    return evaluate_candidate(inst, routes)
+end
+
+
+
+# ===========  Internal Functions  ===========
+
+
+# --- Local search operators ---
 """
 Apply bounded 2-opt improvement on a single route.
 
@@ -141,7 +195,7 @@ Tries segment reversals and keeps the best feasible travel reduction found, stop
 after `max_checks` candidate checks. Returns the improved route (or original route
 if no improvement is found).
 """
-function two_opt_route(inst::Instance, route::Vector{Int}; max_checks::Int = 120)
+function _two_opt_route(inst::Instance, route::Vector{Int}; max_checks::Int = 120)
     if length(route) < 4
         return route
     end
@@ -173,7 +227,7 @@ Try inter-route relocate moves to reduce combined travel.
 Randomly samples donor/receiver route pairs and moves one patient when a feasible
 relocation strictly improves the combined travel of the two routes. Operates in place.
 """
-function try_relocate_improve!(inst::Instance, routes::Vector{Vector{Int}}, rng::AbstractRNG; attempts::Int = 40)
+function _try_relocate_improve!(inst::Instance, routes::Vector{Vector{Int}}, rng::AbstractRNG; attempts::Int = 40)
     if length(routes) < 2
         return
     end
@@ -221,42 +275,17 @@ function try_relocate_improve!(inst::Instance, routes::Vector{Vector{Int}}, rng:
     end
 end
 
-"""
-Mutate a candidate by partial destroy-and-repair plus local improvement.
 
-Removes a random subset of patients, reinserts them with feasible-biased insertion,
-optionally applies 2-opt and relocate improvement, then repairs route consistency and
-returns a newly evaluated `Candidate`.
-"""
-function mutate(inst::Instance, parent::Candidate, rng::AbstractRNG)::Candidate
-    routes = deepcopy_routes(parent.routes)
-    flat = flatten_routes(routes)
-    if isempty(flat)
-        return evaluate_candidate(inst, routes)
+# --- Utilities for flattening patient order across a route collection. ---
+@inline function _append_route_patients!(dest::Vector{Int}, routes::Vector{Vector{Int}})
+    for route in routes
+        append!(dest, route)
     end
+    return dest
+end
 
-    k = rand(rng, 2:min(10, length(flat)))
-    shuffle!(rng, flat)
-    removed = flat[1:k]
-
-    for pid in removed
-        remove_patient!(routes, pid)
-    end
-    normalize_routes!(routes)
-
-    shuffle!(rng, removed)
-    for pid in removed
-        insert_or_force!(inst, routes, pid, rng)
-    end
-
-    if !isempty(routes) && rand(rng) < 0.6
-        idx = rand(rng, eachindex(routes))
-        routes[idx] = two_opt_route(inst, routes[idx])
-    end
-    if rand(rng) < 0.5
-        try_relocate_improve!(inst, routes, rng)
-    end
-
-    repair_routes!(inst, routes, rng)
-    return evaluate_candidate(inst, routes)
+function _flatten_routes(routes::Vector{Vector{Int}})
+    patients = Int[]
+    _append_route_patients!(patients, routes)
+    return patients
 end

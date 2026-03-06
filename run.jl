@@ -4,17 +4,11 @@ include(joinpath(@__DIR__, "src", "HomeCareGA.jl"))
 using .HomeCareGA
 
 function parse_args(args::Vector{String})
+    # Defaults are sourced from config.jl::default_config()
+    # Only GA config parameters are taken from defaults; others are required or have defaults here
     opts = Dict{String, String}(
         "instance" => "resources/train_0.json",
         "seed" => "42",
-        "population" => "80",
-        "generations" => "1000",
-        "tournament" => "4",
-        "elitism" => "4",
-        "crossover" => "0.9",
-        "mutation" => "0.35",
-        "time-limit" => "60.0",
-        "log-every" => "25",
         "output-dir" => "results",
         "run-all" => "false",
     )
@@ -38,6 +32,7 @@ function parse_args(args::Vector{String})
                   --elitism <int>         Number of elite survivors
                   --crossover <float>     Crossover probability
                   --mutation <float>      Mutation probability
+                  --local-search <float>  Local search probability
                   --time-limit <float>    Time limit in seconds per instance
                   --log-every <int>       Logging interval in generations
                   --output-dir <path>     Output directory
@@ -65,15 +60,30 @@ function parse_args(args::Vector{String})
 end
 
 function build_config(opts::Dict{String, String})
-    return default_config(
-        population_size = parse(Int, opts["population"]),
-        generations = parse(Int, opts["generations"]),
-        tournament_size = parse(Int, opts["tournament"]),
-        elitism = parse(Int, opts["elitism"]),
-        crossover_rate = parse(Float64, opts["crossover"]),
-        mutation_rate = parse(Float64, opts["mutation"]),
-        time_limit_sec = parse(Float64, opts["time-limit"]),
-        log_every = parse(Int, opts["log-every"]),
+    # Start with all defaults from config.jl
+    cfg = default_config()
+    
+    # Override the parameters that are specified in opts, otherwise keep defaults
+    population_size = haskey(opts, "population") ? parse(Int, opts["population"]) : cfg.population_size
+    generations = haskey(opts, "generations") ? parse(Int, opts["generations"]) : cfg.generations
+    tournament_size = haskey(opts, "tournament") ? parse(Int, opts["tournament"]) : cfg.tournament_size
+    elitism = haskey(opts, "elitism") ? parse(Int, opts["elitism"]) : cfg.elitism
+    crossover_rate = haskey(opts, "crossover") ? parse(Float64, opts["crossover"]) : cfg.crossover_rate
+    mutation_rate = haskey(opts, "mutation") ? parse(Float64, opts["mutation"]) : cfg.mutation_rate
+    local_search_rate = haskey(opts, "local-search") ? parse(Float64, opts["local-search"]) : cfg.local_search_rate
+    time_limit_sec = haskey(opts, "time-limit") ? parse(Float64, opts["time-limit"]) : cfg.time_limit_sec
+    log_every = haskey(opts, "log-every") ? parse(Int, opts["log-every"]) : cfg.log_every
+    
+    return GAConfig(
+        population_size,
+        generations,
+        tournament_size,
+        elitism,
+        crossover_rate,
+        mutation_rate,
+        local_search_rate,
+        time_limit_sec,
+        log_every,
     )
 end
 

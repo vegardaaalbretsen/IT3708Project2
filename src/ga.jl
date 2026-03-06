@@ -111,16 +111,27 @@ function run_ga(inst::Instance, cfg::GAConfig, rng::AbstractRNG)
             next_pop[i] = copy_candidate(population[i])
         end
 
-        # Generate offspring using deterministic per-index RNG seeds.
+        # Generate offspring in parallell using threads:
+        # - Tournament selection is thread-safe since it only reads from the population, which is not modified until the next generation.
+        # - Crossover and mutation are also thread-safe since they only modify the local child candidate.
+        # - RNG access is handled by creating a unique rng for each thread, with a unique deterministic seed for each to ensure reproducibility and stochasticity (so they don't all select the same parents).
         if offspring_count > 0
+            offspring = Vector{Candidate}(undef, offspring_count)
             seed_base = rand(rng, UInt)
-            for i in 1:offspring_count
+
+            # Phase 1: Generate the offspring population via selection, crossover and mutation
+            Threads.@threads for i in 1:offspring_count
+                # Deterministic unique seed per thread and offspring index.
                 local_seed = seed_base + UInt(gen) * UInt(1_000_003) + UInt(i) * UInt(97)
                 local_rng = MersenneTwister(local_seed)
 
+                # Select first parent
                 p1 = tournament_select(population, local_rng, cfg.tournament_size)
+
+                # Init child as a copy of the first parent
                 child = copy_candidate(p1)
 
+                # Apply crossover and mutation
                 if rand(local_rng) < cfg.crossover_rate
                     p2 = tournament_select(population, local_rng, cfg.tournament_size)
                     child = crossover(inst, p1, p2, local_rng)
@@ -130,11 +141,31 @@ function run_ga(inst::Instance, cfg::GAConfig, rng::AbstractRNG)
                     child = mutate(inst, child, local_rng)
                 end
 
-                next_pop[elite_count + i] = child
+                offspring[i] = child
+            end
+
+            # Phase 2: Repair all offspring and re-evaluate
+            for i in 1:offspring_count
+                repair_routes!(inst, offspring[i].routes, rng)
+                offspring[i] = evaluate_candidate(inst, offspring[i].routes)
+            end
+
+            # Phase 3: Apply local search to selected offspring
+            for i in 1:offspring_count
+                if rand(rng) < cfg.local_search_rate
+                    offspring[i] = local_search(inst, offspring[i], rng)
+                end
+            end
+
+            for i in 1:offspring_count
+                next_pop[elite_count + i] = offspring[i]
             end
         end
 
         population = next_pop
+
+
+        # --- Collect metrics and update best solution ---
         push!(
             metrics_history,
             _generation_metrics(population, gen),
@@ -147,6 +178,7 @@ function run_ga(inst::Instance, cfg::GAConfig, rng::AbstractRNG)
             best = copy_candidate(generation_best)
         end
 
+        # --- Logging and time limit check ---
         if (gen % cfg.log_every == 0) || (gen == 1)
             @printf(
                 "Gen %4d | best travel: %.2f | feasible: %s | routes: %d\n",
