@@ -1,6 +1,6 @@
 GA Configuration:
 Population size: 80
-Generations: 2000
+Generations: 5000
 Tournament size: 3
 Elitism: 4
 Crossover rate: 0.60
