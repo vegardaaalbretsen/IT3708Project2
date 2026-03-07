@@ -1,8 +1,8 @@
 GA Configuration:
 Population size: 80
-Generations: 1500
+Generations: 2000
 Tournament size: 3
-Elitism: 1
-Crossover rate: 0.80
-Mutation rate: 0.60
+Elitism: 3
+Crossover rate: 0.60
+Mutation rate: 0.70
 Time limit (sec): 120.00
