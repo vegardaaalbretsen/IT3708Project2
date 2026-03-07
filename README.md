@@ -26,17 +26,22 @@ julia -t auto --project=. run.jl --instance resources/train_0.json --time-limit 
 julia --project=. run.jl --run-all --time-limit 60 --population 80 --generations 1000
 ```
 
-
 ## Run the test instances with our parameters
+
 Test instance 1
+
 ```bash
-julia -t auto --project=. run.jl --instance resources/test_instance_1.json --generations 1000
+julia -t auto --project=. run.jl --instance resources/test_instance_1.json
 ```
+
 Test instance 2
+
 ```bash
-julia -t auto --project=. run.jl --instance resources/test_instance_2.json --elitism 4 --crossover 0.5 --mutation 0.7
+julia -t auto --project=. run.jl --instance resources/test_instance_2.json
 ```
+
 Test instance 3
+
 ```bash
 julia -t auto --project=. run.jl --instance resources/test_instance_3.json
 ```
