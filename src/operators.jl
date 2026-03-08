@@ -77,43 +77,78 @@ end
 """
 Combine two parent candidates into one child.
 
-The operator keeps a random subset of routes from parent `a`, then inserts remaining
-patients in a best-feasible order using both parents as insertion order hints. Missing
-or conflicting assignments are repaired, and the final child is returned as an
-evaluated `Candidate`.
+Simple route-exchange crossover (one child):
+1) Select one random route from each parent.
+2) Start from parent `a`, remove the selected route from `a`.
+3) Remove patients from `b`'s selected route if they still exist in the child.
+4) Insert `b`'s selected route into the child.
+5) Reinsert patients from the removed `a` route (best-feasible, fallback force).
+
+This follows the slide flow with explicit route selection, removal, and reinsertion.
 """
 function crossover(inst::Instance, a::Candidate, b::Candidate, rng::AbstractRNG)::Candidate
-    routes = Vector{Vector{Int}}()
     n = patient_count(inst)
+    routes = deepcopy_routes(a.routes)
     used = falses(n)
 
-    idx = collect(eachindex(a.routes))
-    shuffle!(rng, idx)
-    keep_count = isempty(idx) ? 0 : clamp(round(Int, length(idx) * (0.3 + 0.3 * rand(rng))), 1, length(idx))
+    if isempty(routes)
+        for pid in 1:n
+            insert_or_force!(inst, routes, pid, rng)
+        end
+        return evaluate_candidate(inst, routes)
+    end
 
-    for i in 1:keep_count
-        route = copy(a.routes[idx[i]])
-        push!(routes, route)
+    idx_a = rand(rng, eachindex(routes))
+    selected_a = copy(routes[idx_a])
+    selected_b = isempty(b.routes) ? Int[] : copy(b.routes[rand(rng, eachindex(b.routes))])
+
+    # Remove selected route from parent a (exchange base)
+    deleteat!(routes, idx_a)
+    normalize_routes!(routes)
+
+    # Remove b-selected patients already present in the remaining routes
+    for pid in selected_b
+        if !(1 <= pid <= n)
+            continue
+        end
+        remove_patient!(routes, pid)
+    end
+    normalize_routes!(routes)
+
+    # Build used mask after removals
+    for route in routes
         for pid in route
+            if 1 <= pid <= n
+                used[pid] = true
+            end
+        end
+    end
+
+    # Insert selected donor route from parent b (without duplicates)
+    donor_route = Int[]
+    for pid in selected_b
+        if 1 <= pid <= n && !used[pid]
+            push!(donor_route, pid)
+            used[pid] = true
+        end
+    end
+    if !isempty(donor_route)
+        push!(routes, donor_route)
+    end
+
+    # Reinsert patients removed with selected_a if they are now missing
+    for pid in selected_a
+        if 1 <= pid <= n && !used[pid]
+            insert_or_force!(inst, routes, pid, rng)
             used[pid] = true
         end
     end
 
-    order = Int[]
-    _append_route_patients!(order, b.routes)
-    _append_route_patients!(order, a.routes)
-
-    for pid in order
-        if used[pid]
-            continue
-        end
-        insert_or_force!(inst, routes, pid, rng)
-        used[pid] = true
-    end
-
+    # Final completion guard
     for pid in 1:n
         if !used[pid]
             insert_or_force!(inst, routes, pid, rng)
+            used[pid] = true
         end
     end
 
